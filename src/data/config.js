@@ -96,5 +96,19 @@ export const DEFAULT_SETTINGS = {
   language: 'de',
   safeAreaInset: 0,      // Overscan-Ausgleich für ältere Fernseher (0–6 %)
   brightness: 1,         // 0.6–1.8: hebt dunkle Bereiche an (viele TVs verschlucken Schwarz)
-  assistMode: false,     // Halbierter Schaden, falls es zu hart wird
+  difficulty: 'normal',  // 'leicht' | 'normal' | 'schwer' (siehe DIFFICULTY)
 };
+
+// --- Schwierigkeitsgrade -------------------------------------------------------
+// dmgTaken: Faktor auf erlittenen Schaden · bossHp: Faktor auf Boss-Leben
+// bossPause: Faktor auf die Atempause zwischen Boss-Angriffen
+// bossOrbs: Blutkugeln, die der Boss beim Wechsel in Phase 2 verliert (je 8 LP)
+export const DIFFICULTY = {
+  leicht: { label: 'Leicht', dmgTaken: 0.5,  bossHp: 0.7,  bossPause: 1.5, bossOrbs: 4 },
+  normal: { label: 'Normal', dmgTaken: 0.75, bossHp: 0.85, bossPause: 1.2, bossOrbs: 3 },
+  schwer: { label: 'Schwer', dmgTaken: 1,    bossHp: 1,    bossPause: 1,   bossOrbs: 0 },
+};
+
+export function difficultyOf(settings) {
+  return DIFFICULTY[settings?.difficulty] || DIFFICULTY.normal;
+}

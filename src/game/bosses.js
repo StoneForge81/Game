@@ -9,10 +9,13 @@ import { newAttackId, resolveAttack, rollDamage, impactFx } from './combat.js';
 import { makePose, blendPose, drawHumanoid, drawEyesGlow, COSTUMES, Cloth, outlined, cel, smoothPath, P } from '../render/puppet.js';
 import { holyOrb, holyPillar, groundWave, waterWave, thrownSpear, bouncingGear, flyingBook, lightBlade, flameShot, Projectile } from './projectiles.js';
 import { BOSS_TITLES } from '../data/story.js';
-import { CHAR_SCALE } from '../data/config.js';
+import { CHAR_SCALE, difficultyOf } from '../data/config.js';
+import { Pickup } from './items.js';
 
 const BOSS_STATS = {
-  ambrosius:  { hp: 360, dmg: 16, w: 26, h: 48, sz: 1.55, fly: false },
+  // Ambrosius ist der erste Boss: etwas weniger Leben und Wucht als der Rest,
+  // damit man seine Muster in Ruhe lernen kann.
+  ambrosius:  { hp: 320, dmg: 14, w: 26, h: 48, sz: 1.55, fly: false },
   mirella:    { hp: 400, dmg: 15, w: 20, h: 40, sz: 1.25, fly: true },
   isolde:     { hp: 440, dmg: 17, w: 18, h: 38, sz: 1.2,  fly: false },
   malachias:  { hp: 460, dmg: 16, w: 20, h: 40, sz: 1.25, fly: true },
@@ -22,7 +25,9 @@ const BOSS_STATS = {
 
 export function createBoss(kind, arena, game) {
   const C = { ambrosius: Ambrosius, mirella: Mirella, isolde: Isolde, malachias: Malachias, cogliostro: Cogliostro, serafine: Serafine }[kind];
-  return new C(kind, arena, game);
+  const boss = new C(kind, arena, game);
+  boss.maxHp = boss.hp = Math.round(boss.stats.hp * difficultyOf(game?.settings).bossHp);
+  return boss;
 }
 
 class Boss extends Entity {
@@ -102,7 +107,7 @@ class Boss extends Entity {
       this.runAttack(dt, game, p, this.attack);
       if (this.attack && this.attack.t >= this.attack.dur) {
         this.attack = null;
-        this.idleT = (this.phase === 2 ? 0.55 : 0.9) + Math.random() * 0.4;
+        this.idleT = ((this.phase === 2 ? 0.55 : 0.9) + Math.random() * 0.4) * difficultyOf(game.settings).bossPause;
       }
     } else {
       this.idleT -= dt;
@@ -124,6 +129,11 @@ class Boss extends Entity {
       game.renderer.doFlash(255, 240, 200, 0.35);
       game.particles.ring(this.x, this.y - this.h / 2, '#fff0c0', 8, 90, 0.6);
       this.onPhase2 && this.onPhase2(game);
+      // Verwundet verliert der Boss Blut – eine kleine Stärkung für den Fürsten.
+      const orbs = difficultyOf(game.settings).bossOrbs;
+      for (let i = 0; i < orbs; i++) {
+        game.objects.push(new Pickup('bloodOrb', this.x, this.y - this.h * 0.6, { vx: (i - (orbs - 1) / 2) * 70, vy: -220 - Math.random() * 60, heal: 8 }));
+      }
     }
   }
 

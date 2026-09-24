@@ -65,7 +65,7 @@ Durch Plattformen fallen: **unten + Springen**. Die Tastensymbole im Spiel passe
 - **Helligkeit:** Wirkt das Bild zu dunkel? Viele Fernseher verschlucken dunkle Töne – hochdrehen.
 - **Bildrand (Overscan):** Werden Anzeigen am Rand abgeschnitten? Erhöhen, bis alles sichtbar ist.
 - **Bildqualität:** *Automatisch* passt sich an; bei Ruckeln eine feste, niedrigere Stufe wählen.
-- **Leichter Modus:** halber Schaden – für entspannte Abende.
+- **Schwierigkeit** (Optionen, jederzeit änderbar): *Leicht* – halber Schaden, schwächere Bosse; *Normal* – fair zum Lernen; *Schwer* – das volle Castlevania-Gefühl. Auf Leicht und Normal verlieren Bosse in Phase 2 heilende Blutkugeln.
 
 ---
 

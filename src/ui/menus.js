@@ -7,6 +7,7 @@ import { clamp, TAU } from '../core/math.js';
 import { ZONES, ZONE_ORDER } from '../data/zones.js';
 import { SLOT_COUNT, formatPlayTime } from '../core/save.js';
 import { T } from '../game/tiles.js';
+import { DIFFICULTY } from '../data/config.js';
 import { makeCanvas } from '../render/renderer.js';
 
 /** Richtungstasten mit Wiederholung beim Gedrückthalten (Stick-freundlich). */
@@ -214,8 +215,9 @@ export function optionsMenu(app, onClose) {
       { label: 'Vibration', type: 'toggle', get: () => s.rumble, set: (v) => { s.rumble = v; apply(); } },
       { label: 'Schadenszahlen', type: 'toggle', get: () => s.showDamageNumbers, set: (v) => { s.showDamageNumbers = v; apply(); } },
       { label: 'Filmkorn', type: 'toggle', get: () => s.grain, set: (v) => { s.grain = v; apply(); } },
-      { label: 'Leichter Modus', type: 'toggle', get: () => s.assistMode, set: (v) => { s.assistMode = v; apply(); },
-        desc: 'Du erleidest nur halben Schaden. Keine Schande – auch Fürsten brauchen Pausen.' },
+      { label: 'Schwierigkeit', type: 'choice', get: () => s.difficulty, set: (v) => { s.difficulty = v; apply(); },
+        options: Object.entries(DIFFICULTY).map(([value, d]) => ({ label: d.label, value })),
+        desc: 'Leicht: halber Schaden, schwächere Bosse. Schwer: wie ein echter Castlevania-Abend. Jederzeit änderbar.' },
       { label: 'Vollbild', type: 'action', onSelect: () => app.toggleFullscreen(), desc: 'Am Fernseher empfohlen. Auch mit F11 möglich.' },
       { label: 'Fertig', type: 'action', onSelect: onClose },
     ],
