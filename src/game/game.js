@@ -11,7 +11,7 @@ import { Player } from './player.js';
 import { Enemy } from './enemies.js';
 import { createBoss } from './bosses.js';
 import { Henry } from './henry.js';
-import { Checkpoint, StartCoffin, Prisoner, LorePoint, Pickup, Door, Exit, Throne, Archivists } from './items.js';
+import { Checkpoint, StartCoffin, Prisoner, LorePoint, Pickup, Door, Exit, Throne, Archivists, Merchant } from './items.js';
 import { Entity } from './entity.js';
 import { Particles } from '../render/particles.js';
 import { TileRenderer } from '../render/tiles.js';
@@ -23,7 +23,10 @@ import { saveSlot, setLastSlot } from '../core/save.js';
 import { HUD } from '../ui/hud.js';
 import { Dialogue } from '../ui/dialogue.js';
 import { MenuScreen, MapScreen, LoreScreen, DeathScreen, EndingScreen, ControlsScreen, optionsMenu } from '../ui/menus.js';
-import { FONT_TITLE, FONT_BODY, wrap, strokeText } from '../ui/text.js';
+import { InventoryScreen } from '../ui/inventory.js';
+import { CONSUMABLES } from '../data/gear.js';
+import { FONT_TITLE, FONT_BODY, wrap, strokeText, drawGlyph } from '../ui/text.js';
+import { glyph } from '../core/input.js';
 import { clamp, rectsOverlap, dist } from '../core/math.js';
 
 const SEEN = 6; // Kacheln pro Kartenfeld
@@ -105,6 +108,7 @@ export class Game {
         case 'exit': this.objects.push(new Exit(e)); break;
         case 'throne': this.throne = new Throne(e); this.objects.push(this.throne); break;
         case 'archivists': { const a = new Archivists(e); a.talked = !!flags.fullMap; this.objects.push(a); break; }
+        case 'merchant': this.objects.push(new Merchant(e)); break;
         default: break;
       }
     }
@@ -235,6 +239,63 @@ export class Game {
       const n = e.kind === 'knight' || e.kind === 'automaton' ? 3 : Math.random() < 0.5 ? 2 : 1;
       for (let i = 0; i < n; i++) this.objects.push(new Pickup('bloodOrb', e.x, e.y - 12, { vx: (Math.random() - 0.5) * 160, vy: -180 - Math.random() * 100 }));
     }
+    // Gold: starke Gegner und spätere Gebiete zahlen besser.
+    const tough = { knight: 2.2, automaton: 2.2, inquisitor: 1.8, crossbow: 1.3 }[e.kind] || 1;
+    this.dropGold(e.x, e.y - 12, Math.round((3 + Math.random() * 4) * tough * (1 + this.zoneIndex * 0.35)));
+    // Selten ein Trank
+    if (Math.random() < 0.05) {
+      const item = Math.random() < 0.7 ? 'heiltrank' : 'blutphiole';
+      this.objects.push(new Pickup('potion', e.x, e.y - 14, { item, vx: (Math.random() - 0.5) * 80, vy: -220 }));
+    }
+  }
+
+  /** Gold als Münzen verstreuen (Ring der Gier wirkt hier). */
+  dropGold(x, y, amount) {
+    let left = Math.max(1, Math.round(amount * this.player.gear.gold));
+    let guard = 0;
+    while (left > 0 && guard++ < 40) {
+      const v = left >= 50 ? 25 : left >= 20 ? 10 : left >= 5 ? 5 : left;
+      left -= v;
+      this.objects.push(new Pickup('coin', x, y, { value: v, vx: (Math.random() - 0.5) * 200, vy: -200 - Math.random() * 160 }));
+    }
+  }
+
+  onPurchase(id, cat) {
+    this.persist();
+    if (cat !== 'item') this.hint('hint.inventory');
+    if (cat === 'spell') this.hud.flashSpell();
+  }
+
+  // --- Mortimer, der Händler ----------------------------------------------------
+
+  openShop(m) {
+    const s = this.save;
+    const open = (greet) => {
+      this.audio.setMuffle(0.5);
+      this.overlay = new InventoryScreen(this.app, this, 'shop', {
+        title: 'Mortimers Karren',
+        subtitle: greet,
+        onClose: () => { this.overlay = null; this.audio.setMuffle(0); this.audio.stopVoice(0.4); this.persist(); },
+      });
+    };
+    if (!s.storyFlags.metMerchant) {
+      s.storyFlags.metMerchant = true;
+      this.startScene('merchant.first', () => open('„Schau dich um, Durchlaucht. Alles frisch aus der Gruft.“'));
+      return;
+    }
+    const lines = SCENES['merchant.greet'] || [];
+    const l = lines[(this._greet = ((this._greet ?? Math.floor(Math.random() * 9)) + 1)) % Math.max(1, lines.length)];
+    if (l) this.audio.playVoice(voiceId(l.who, l.text));
+    open(l ? `„${l.text}“` : '');
+  }
+
+  openInventory(back = null) {
+    this.audio.setMuffle(0.5);
+    this.overlay = new InventoryScreen(this.app, this, 'bag', {
+      title: 'Inventar',
+      subtitle: `${this.zone.name} · Macht ${this.save.power}`,
+      onClose: () => { this.audio.setMuffle(0); this.persist(); if (back) back(); else this.overlay = null; },
+    });
   }
 
   onBloodDrunk(amount) {
@@ -287,12 +348,29 @@ export class Game {
         p.heal(pk.heal);
         this.audio.play('pickup', { x: pk.x, gain: 0.35 });
         break;
+      case 'coin':
+        s.gold += pk.value;
+        this.audio.play('coin', { x: pk.x, gain: pk.value >= 10 ? 0.8 : 0.5 });
+        break;
+      case 'potion': {
+        const it = CONSUMABLES[pk.item];
+        if (!it) break;
+        if ((s.inventory[pk.item] || 0) < it.max) {
+          s.inventory[pk.item] = (s.inventory[pk.item] || 0) + 1;
+          this.hud.notify(it.name, 'Gefunden! (' + s.inventory[pk.item] + ' im Beutel)', it.color);
+        } else {
+          s.gold += Math.round(it.price / 2);
+          this.hud.notify(it.name, 'Beutel voll – für ' + Math.round(it.price / 2) + ' Gold verkauft', '#ffe08a');
+        }
+        this.audio.play('pickup', { x: pk.x });
+        break;
+      }
       case 'heartShard':
         s.heartShards++;
         if (pk.itemId) s.storyFlags['got:' + pk.itemId] = true;
         this.audio.play('heartShard');
         if (s.heartShards % 4 === 0) {
-          s.maxHealth += 20; p.maxHp = s.maxHealth; p.hp = p.maxHp;
+          s.maxHealth += 20; p.recalcStats(); p.hp = p.maxHp;
           this.hud.notify('Lebenskraft gestärkt!', `Maximale Lebenskraft: ${s.maxHealth}`, '#ff9aaa');
         } else this.hud.notify('Herzsplitter', `${s.heartShards % 4} von 4 – vier ergeben ein ganzes Herz`, '#ff9aaa');
         this.persist();
@@ -410,7 +488,7 @@ export class Game {
       } else {
         s.mercy++;
         s.maxHealth += 10;
-        p.maxHp = s.maxHealth;
+        p.recalcStats();
         p.heal(10);
         pr.free(this);
         this.startScene('prisoner.spare', () => this.hud.notify('Du erinnerst dich, wer du warst', `Maximale Lebenskraft: ${s.maxHealth}`, '#ffe0e8'));
@@ -485,8 +563,10 @@ export class Game {
       this.cutscene = false;
       this.player.locked = false;
       if (this.zone.reward) this.objects.push(new Pickup('ability', boss.x, boss.floorY - 26, { ability: this.zone.reward }));
+      // Die Jäger tragen ihren Sold bei sich.
+      this.dropGold(boss.x, boss.floorY - 30, 150 + this.zoneIndex * 70);
       // Belohnung: ein ganzes Herz
-      s.maxHealth += 10; this.player.maxHp = s.maxHealth; this.player.hp = this.player.maxHp;
+      s.maxHealth += 10; this.player.recalcStats(); this.player.hp = this.player.maxHp;
       this.audio.playTrack(TRACKS.sanctuary, 2);
       this.persist();
     };
@@ -590,6 +670,7 @@ export class Game {
       onCancel: close,
       items: [
         { label: 'Weiterspielen', type: 'action', onSelect: close },
+        { label: 'Inventar & Ausrüstung', type: 'action', desc: 'Tränke, Waffen, Rüstungen, Ringe und Zauber.', onSelect: () => this.openInventory(() => this._pauseMenu()) },
         { label: 'Karte', type: 'action', onSelect: () => { this.overlay = new MapScreen(this.app, this, () => this._pauseMenu()); } },
         { label: 'Optionen', type: 'action', onSelect: () => { this.overlay = optionsMenu(this.app, () => this._pauseMenu()); } },
         { label: 'Steuerung', type: 'action', onSelect: () => { this.overlay = new ControlsScreen(this.app, () => this._pauseMenu()); } },
@@ -628,6 +709,7 @@ export class Game {
 
     if (!this.cutscene && input.pressed('menu')) { this._pauseMenu(); return; }
     if (!this.cutscene && input.pressed('map')) { this.overlay = new MapScreen(this.app, this, () => { this.overlay = null; }); return; }
+    if (!this.cutscene && input.pressed('inventory') && this.player.state !== 'dead') { this.openInventory(); return; }
 
     if (this._slowmoT > 0) { this._slowmoT -= dt / Math.max(0.1, this.app.loop.timeScale); if (this._slowmoT <= 0) this.app.loop.timeScale = 1; }
     this._pitT = Math.max(0, (this._pitT || 0) - dt);
@@ -735,7 +817,11 @@ export class Game {
       }
     }
     // Erster Sarg: Henry macht darauf aufmerksam
-    for (const o of this.objects) if (o instanceof Checkpoint && Math.abs(o.x - p.x) < 120 && Math.abs(o.y - p.y) < 60) this.hint('hint.checkpoint');
+    for (const o of this.objects) {
+      if (o instanceof Checkpoint && Math.abs(o.x - p.x) < 120 && Math.abs(o.y - p.y) < 60) this.hint('hint.checkpoint');
+      if (o instanceof Merchant && Math.abs(o.x - p.x) < 140 && Math.abs(o.y - p.y) < 60) this.hint('hint.merchant');
+    }
+    if (p.hp < p.maxHp * 0.35 && p.state !== 'dead' && Object.values(this.save.inventory).some((n) => n > 0)) this.hint('hint.potion');
   }
 
   _arenas(p) {
@@ -767,6 +853,7 @@ export class Game {
           const kind = (idx + this.zoneIndex) % 2 === 0 ? 'heartShard' : 'chalice';
           this.objects.push(new Pickup(kind, a.reward.x, a.reward.y, { id: a.id + '.reward' }));
           this.hud.notify('Arena bezwungen', 'Ein Schatz liegt bereit.', '#ffd8a0');
+          this.dropGold(a.reward.x, a.reward.y - 10, 40 + this.zoneIndex * 20);
         }
       }
     }
@@ -819,11 +906,10 @@ export class Game {
     pr.t += dt;
     const input = this.input;
     // Jede Tafel steht mindestens 4,2 s – und so lange, bis der Erzähler fertig ist.
+    // Jede Tafel bleibt stehen, bis jemand X (oder A/Enter) drückt.
     const rest = this.audio.voiceRemaining();
-    if (rest === Infinity) pr.hold = Math.min(pr.t + 0.1, 12);        // Aufnahme lädt noch
-    else if (rest !== null) pr.hold = pr.t + rest + 0.8;              // spricht – danach kurz Stille
-    const done = pr.t > Math.max(4.2, pr.hold ?? 0);
-    if (input.pressed('confirm') || input.pressed('attack') || input.pressed('drain') || done) {
+    pr.ready = rest === null || rest === 0;   // Erzähler fertig → „Weiter“ zeigen
+    if (pr.t > 0.5 && (input.pressed('confirm') || input.pressed('attack') || input.pressed('drain'))) {
       pr.i++;
       pr.t = 0;
       pr.spoken = false;
@@ -944,7 +1030,7 @@ export class Game {
       ctx.fillRect(0, 0, W, H);
       const text = PROLOGUE[pr.i];
       if (!text) return;
-      const a = clamp(Math.min(pr.t * 1.5, (4.2 - pr.t) * 1.5), 0, 1);
+      const a = clamp(pr.t * 1.5, 0, 1);
       ctx.globalAlpha = a;
       ctx.textAlign = 'center';
       if (pr.i === 0) {
@@ -956,6 +1042,18 @@ export class Game {
         lines.forEach((l, i) => { ctx.fillStyle = pr.i === PROLOGUE.length - 1 ? '#ff5068' : '#e0d4dc'; ctx.fillText(l, W / 2, H / 2 - (lines.length - 1) * 32 + i * 64); });
       }
       ctx.globalAlpha = 1;
+      if (pr.t > 1.2 && pr.ready) {
+        // Pulsierender Hinweis: weiter geht es erst auf Knopfdruck
+        const k = 0.8 + 0.2 * Math.sin(pr.t * 4);
+        ctx.globalAlpha = k;
+        const gw = drawGlyph(ctx, glyph(this.input, 'attack'), W / 2 - 70, H - 150, 52);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.font = `600 34px ${FONT_BODY}`;
+        ctx.fillStyle = '#e0d4dc';
+        ctx.fillText('Weiter', W / 2 - 70 + gw / 2 + 18, H - 148);
+        ctx.globalAlpha = 1;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      }
       ctx.font = `500 28px ${FONT_BODY}`;
       ctx.fillStyle = '#6a5a64';
       ctx.fillText('Überspringen mit Pause', W / 2, H - 60);

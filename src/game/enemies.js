@@ -400,7 +400,7 @@ export class Enemy extends Entity {
     // Wenn der Angriff vom Spieler kommt, Machtstufe einrechnen.
     let dmg = attack.damage, crit = !!attack.crit;
     if (attack.team === 'player' && attack.source) {
-      const r = rollDamage(attack.damage, game.player.power);
+      const r = rollDamage(attack.damage, game.player.power, attack.critChance ?? 0.08);
       dmg = r.dmg; crit = r.crit;
     }
     this.hp -= dmg;

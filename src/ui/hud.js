@@ -6,6 +6,8 @@ import { FONT_TITLE, FONT_HEAD, FONT_BODY, wrap, strokeText, drawGlyph, gothicPa
 import { glyph } from '../core/input.js';
 import { clamp, damp, TAU } from '../core/math.js';
 import { ABILITY_INFO } from '../data/zones.js';
+import { SPELLS, CONSUMABLES } from '../data/gear.js';
+import { drawCoin, drawIcon } from './inventory.js';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
@@ -21,7 +23,12 @@ export class HUD {
     this.bloodShown = 0;
     this.bossShown = 1;
     this.bossLag = 1;
+    this.spellFlash = 0;
+    this.goldShown = null;
+    this.goldPulse = 0;
   }
+
+  flashSpell() { this.spellFlash = 1; }
 
   notify(text, sub = '', color = '#ffd8dc') {
     this.toasts.push({ text, sub, color, t: 0 });
@@ -51,6 +58,16 @@ export class HUD {
     if (this.title) { this.title.t += dt; if (this.title.t > 5) this.title = null; }
     if (this.banner) { this.banner.t += dt; if (this.banner.t > 5) this.banner = null; }
     this.bloodFlash = Math.max(0, this.bloodFlash - dt * 2);
+    this.spellFlash = Math.max(0, this.spellFlash - dt * 2);
+    // Goldzähler zählt hoch statt zu springen
+    const gold = game.save.gold;
+    if (this.goldShown === null) this.goldShown = gold;
+    if (gold !== Math.round(this.goldShown)) {
+      if (gold > this.goldShown) this.goldPulse = 1;
+      this.goldShown += (gold - this.goldShown) * Math.min(1, dt * 8);
+      if (Math.abs(gold - this.goldShown) < 0.5) this.goldShown = gold;
+    }
+    this.goldPulse = Math.max(0, this.goldPulse - dt * 3);
   }
 
   draw(ctx, W, H, game) {
@@ -141,7 +158,8 @@ export class HUD {
 
   _drawAbilities(ctx, x, y, p) {
     const list = [];
-    if (p.abilities.lance) list.push(['lance', 'Lanze']);
+    const spell = p.currentSpell();
+    if (spell) list.push(['lance', `${SPELLS[spell].name} · ${p.spellCost(spell)}`, SPELLS[spell].color]);
     if (p.abilities.wolf) list.push(['wolfClaw', 'Klaue']);
     if (p.abilities.mist) list.push(['dash', 'Nebel']);
     else list.push(['dash', 'Ausweichen']);
@@ -150,12 +168,41 @@ export class HUD {
     ctx.font = `600 24px ${FONT_HEAD}`;
     ctx.textBaseline = 'middle';
     let cx = x + 10;
-    for (const [action, name] of list) {
+    for (const [action, name, color] of list) {
       const gw = drawGlyph(ctx, glyph(this.app.input, action), cx + 22, y + 22, 40);
       ctx.textAlign = 'left';
-      strokeText(ctx, name, cx + gw / 2 + 30, y + 23, '#e8dce4', 'rgba(0,0,0,0.8)', 5);
+      const flash = action === 'lance' ? this.spellFlash : 0;
+      strokeText(ctx, name, cx + gw / 2 + 30, y + 23, flash > 0 ? '#ffffff' : color ? '#ffd8dc' : '#e8dce4', 'rgba(0,0,0,0.8)', 5);
+      if (color) { ctx.fillStyle = color; ctx.fillRect(cx + gw / 2 + 30, y + 42, ctx.measureText(name).width * (0.3 + 0.7 * (1 - flash)), 3); }
       cx += gw + ctx.measureText(name).width + 60;
     }
+
+    // Zweite Zeile: Schnelltrank, Zauberwechsel, Gold
+    const y2 = y + 70;
+    cx = x + 10;
+    const s = p.save;
+    const qi = CONSUMABLES[s.quickItem] && s.inventory[s.quickItem] > 0 ? s.quickItem : Object.keys(CONSUMABLES).find((k) => s.inventory[k] > 0);
+    const gw = drawGlyph(ctx, glyph(this.app.input, 'quickItem'), cx + 22, y2, 40);
+    cx += gw / 2 + 36;
+    if (qi) {
+      drawIcon(ctx, 'item', qi, CONSUMABLES[qi], cx + 12, y2, 17);
+      ctx.textAlign = 'left';
+      strokeText(ctx, `× ${s.inventory[qi]}`, cx + 34, y2 + 2, '#ffd8a0', 'rgba(0,0,0,0.8)', 5);
+      cx += 34 + ctx.measureText(`× ${s.inventory[qi]}`).width + 40;
+    } else {
+      ctx.textAlign = 'left';
+      strokeText(ctx, 'keine Tränke', cx, y2 + 2, '#8a7a88', 'rgba(0,0,0,0.8)', 5);
+      cx += ctx.measureText('keine Tränke').width + 40;
+    }
+    if (p.save && (p.currentSpell() && (p.save.spells.length + (p.abilities.lance ? 1 : 0)) > 1)) {
+      const g2 = drawGlyph(ctx, glyph(this.app.input, 'spellNext'), cx + 22, y2, 40);
+      strokeText(ctx, 'Zauber ⇄', cx + g2 / 2 + 30, y2 + 2, '#e8dce4', 'rgba(0,0,0,0.8)', 5);
+      cx += g2 + ctx.measureText('Zauber ⇄').width + 60;
+    }
+    const pulse = 1 + this.goldPulse * 0.25;
+    drawCoin(ctx, cx + 16, y2, 15 * pulse);
+    ctx.font = `700 ${Math.round(28 * pulse)}px ${FONT_HEAD}`;
+    strokeText(ctx, `${Math.round(this.goldShown ?? s.gold)}`, cx + 40, y2 + 2, '#ffe08a', 'rgba(0,0,0,0.85)', 5);
     ctx.restore();
   }
 
@@ -246,6 +293,12 @@ export class HUD {
     ctx.font = `600 32px ${FONT_BODY}`;
     ctx.fillStyle = '#2a1420';
     lines.forEach((l, i) => ctx.fillText(l, x + 26, y + 74 + i * 40));
+    // „Weiter“-Hinweis: die Blase wartet auf einen Tastendruck
+    if (b.wait && b.t > 1.2) {
+      const k = 0.8 + 0.2 * Math.sin(b.t * 5);
+      ctx.globalAlpha = a * k;
+      drawGlyph(ctx, glyph(this.app.input, 'attack'), x + w - 34, y + 30, 36);
+    }
     ctx.restore();
   }
 

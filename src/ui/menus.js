@@ -257,7 +257,7 @@ export class ControlsScreen {
     const input = this.app.input;
     ctx.save();
     ctx.fillStyle = 'rgba(4,0,6,0.75)'; ctx.fillRect(0, 0, W, H);
-    const w = 1300, h = 820, x = W / 2 - w / 2, y = H / 2 - h / 2 - 20;
+    const w = 1500, h = 900, x = W / 2 - w / 2, y = H / 2 - h / 2 - 20;
     gothicPanel(ctx, x, y, w, h, { accent: true });
     ctx.textAlign = 'center';
     ctx.font = `700 64px ${FONT_TITLE}`;
@@ -266,24 +266,29 @@ export class ControlsScreen {
     ctx.font = `italic 500 30px ${FONT_BODY}`; ctx.fillStyle = '#c8a8b0';
     ctx.fillText(dev, W / 2, y + 145);
     const rows = [
-      ['jump', 'Springen', 'Halten = höher · mit Fledermausgestalt: in der Luft nochmal, halten = gleiten'],
-      ['attack', 'Blutklinge', 'Dreimal drücken für die volle Kombo'],
-      ['lance', 'Blutlanze', 'Kostet Blut · durchbohrt Schilde und mehrere Gegner'],
-      ['wolfClaw', 'Wolfsklaue', 'Kostet Blut · bricht Schilde und morsche Mauern'],
-      ['dash', 'Ausweichen / Nebel', 'Mit Nebelschritt: unverwundbar und durch Gitter'],
-      ['drain', 'Trinken / Handeln', 'Taumelnde Gegner aussaugen · Särge, Gefangene, Schriften'],
+      ['jump', 'Springen', 'Halten = höher · Fledermaus: nochmal, halten = gleiten'],
+      ['attack', 'Klinge', '3er-Kombo · mit hoch: Hieb nach oben'],
+      ['lance', 'Zauber', 'Kostet Blut · Blutlanze und gekaufte Zauber'],
+      ['spellNext', 'Zauber wechseln', 'Rechten Stick kippen oder drücken'],
+      ['wolfClaw', 'Wolfsklaue', 'Kostet Blut · bricht Schilde und Mauern'],
+      ['dash', 'Ausweichen / Nebel', 'Nebelschritt: unverwundbar, durch Gitter'],
+      ['drain', 'Trinken / Handeln', 'Gegner aussaugen · Särge, Händler, Schriften'],
+      ['quickItem', 'Trank', 'Trank auf der Schnelltaste trinken'],
+      ['inventory', 'Inventar', 'Ausrüstung, Tränke, Zauber (auch im Pausenmenü)'],
       ['map', 'Karte', ''],
       ['menu', 'Pause', ''],
     ];
-    let ry = y + 220;
-    for (const [a, name, desc] of rows) {
-      drawGlyph(ctx, glyph(input, a), x + 140, ry, 54);
+    // Zwei Spalten, damit alles auf den Fernseher passt
+    rows.forEach(([a, name, desc], i) => {
+      const col = i < 6 ? 0 : 1;
+      const cx = x + 90 + col * (w / 2 - 20);
+      const ry = y + 220 + (col ? i - 6 : i) * 96;
+      drawGlyph(ctx, glyph(input, a), cx + 30, ry, 54);
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.font = `700 38px ${FONT_HEAD}`;
-      strokeText(ctx, name, x + 220, ry - (desc ? 12 : 0), '#f4ecf0', 'rgba(0,0,0,0.7)', 4);
-      if (desc) { ctx.font = `500 26px ${FONT_BODY}`; ctx.fillStyle = '#a898a4'; ctx.fillText(desc, x + 220, ry + 22); }
-      ry += 72;
-    }
+      ctx.font = `700 36px ${FONT_HEAD}`;
+      strokeText(ctx, name, cx + 100, ry - (desc ? 14 : 0), '#f4ecf0', 'rgba(0,0,0,0.7)', 4);
+      if (desc) { ctx.font = `500 24px ${FONT_BODY}`; ctx.fillStyle = '#a898a4'; ctx.fillText(desc, cx + 100, ry + 20); }
+    });
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.font = `500 28px ${FONT_BODY}`; ctx.fillStyle = '#c9a048';
     ctx.fillText('Bewegen: linker Stick oder Steuerkreuz · Durch Plattformen fallen: unten + Springen', W / 2, y + h - 40);

@@ -8,16 +8,21 @@ import { PLAYER, PHYS, COST, HOLY, TILE, difficultyOf } from '../data/config.js'
 import { approach, clamp, damp } from '../core/math.js';
 import { T } from './tiles.js';
 import { newAttackId, resolveAttack, rollDamage } from './combat.js';
-import { Cloth, makePose, blendPose, solveRig, drawHumanoid, drawEyesGlow, COSTUMES } from '../render/puppet.js';
-import { BloodLance } from './projectiles.js';
+import { Cloth, makePose, blendPose, solveRig, drawHumanoid, drawEyesGlow, COSTUMES, SLASHES } from '../render/puppet.js';
+import { BloodLance, batSwarm, hellfire } from './projectiles.js';
+import { gearStats, knownSpells, SPELLS, CONSUMABLES } from '../data/gear.js';
 
-// Kombo der Blutklinge: Dauer, aktives Fenster, Schaden, Reichweite.
+// Kombo der Klinge: Dauer, Treffer-Fenster (liegt auf der Hieb-Phase in
+// render/puppet.js › SLASHES), Schaden, Trefferfläche, Vorwärtsschub.
+// Waffe und Rüstung verändern Tempo, Reichweite und Schaden.
 const COMBO = [
-  { anim: 'attack1', dur: 0.30, on: [0.22, 0.55], dmg: 10, w: 34, h: 22, dy: -18, lunge: 40 },
-  { anim: 'attack2', dur: 0.30, on: [0.22, 0.55], dmg: 12, w: 30, h: 34, dy: -24, lunge: 50 },
-  { anim: 'attack3', dur: 0.44, on: [0.25, 0.55], dmg: 19, w: 42, h: 18, dy: -16, lunge: 230, heavy: true },
+  { anim: 'attack1', dur: 0.32, on: [0.2, 0.52], dmg: 10, w: 38, h: 34, dy: -20, lunge: 40 },
+  { anim: 'attack2', dur: 0.32, on: [0.2, 0.52], dmg: 12, w: 32, h: 46, dy: -28, lunge: 50 },
+  { anim: 'attack3', dur: 0.48, on: [0.32, 0.58], dmg: 20, w: 46, h: 34, dy: -18, lunge: 200, heavy: true, impact: 0.5 },
 ];
-const AIR_ATTACK = { anim: 'airAttack', dur: 0.32, on: [0.2, 0.6], dmg: 11, w: 38, h: 34, dy: -14, lunge: 0 };
+const AIR_ATTACK = { anim: 'airAttack', dur: 0.32, on: [0.16, 0.62], dmg: 11, w: 40, h: 40, dy: -14, lunge: 0 };
+// Hoch + Angriff: Hieb über den Kopf – gegen Fledermäuse und Geschosse von oben.
+const UP_ATTACK = { anim: 'attackUp', dur: 0.3, on: [0.18, 0.5], dmg: 11, w: 34, h: 48, dy: -46, lunge: 0, up: true };
 
 const GHOST = {
   ...COSTUMES.ingomar,
@@ -32,9 +37,12 @@ export class Player extends Entity {
     this.team = 'player';
     this.hurtable = true;
     this.save = save;
-    this.maxHp = save.maxHealth;
+    this.recalcStats();
     this.hp = Math.min(save.health, this.maxHp);
     this.blood = save.blood;
+    this.buffs = { rage: 0, stone: 0 };   // Restzeit der Trank-Wirkungen (s)
+    this.shield = { hits: 0, t: 0 };      // Blutschild
+    this.drinkT = 0;
 
     this.state = 'normal';
     this.stateT = 0;
@@ -87,6 +95,35 @@ export class Player extends Entity {
   get power() { return this.save.power; }
   get maxBlood() { return this.save.maxBlood; }
 
+  /** Ausrüstung neu einrechnen (nach Anlegen, Herzsplitter, Laden …). */
+  recalcStats() {
+    this.gear = gearStats(this.save);
+    this.maxHp = this.save.maxHealth + this.gear.hp;
+    if (this.hp > this.maxHp) this.hp = this.maxHp;
+    const a = this.gear.armor;
+    this.costume = { ...COSTUMES.ingomar, ...a.palette, plates: !!a.plates };
+    this.ghostCostume = { ...GHOST, plates: !!a.plates, plate: '#5a0a18', plateShade: '#3a0610', plateL: '#8a1a2a' };
+  }
+
+  /** Ausgewählter Zauber (oder null, wenn der Fürst noch keinen kennt). */
+  currentSpell() {
+    const known = knownSpells(this.save);
+    if (!known.length) return null;
+    if (!known.includes(this.save.spell)) this.save.spell = known[0];
+    return this.save.spell;
+  }
+
+  cycleSpell(game, dir) {
+    const known = knownSpells(this.save);
+    if (known.length < 2) { if (known.length) game.hud.flashSpell(); return; }
+    const i = known.indexOf(this.currentSpell());
+    this.save.spell = known[(i + dir + known.length) % known.length];
+    game.audio.play('uiMove');
+    game.hud.flashSpell();
+  }
+
+  spellCost(id) { return Math.ceil(SPELLS[id].cost * this.gear.spellCost); }
+
   // === Hauptschleife ========================================================
 
   update(dt, game) {
@@ -95,6 +132,13 @@ export class Player extends Entity {
 
     this.invuln = Math.max(0, this.invuln - dt);
     this.dashCd = Math.max(0, this.dashCd - dt);
+    this.buffs.rage = Math.max(0, this.buffs.rage - dt);
+    this.buffs.stone = Math.max(0, this.buffs.stone - dt);
+    this.drinkT = Math.max(0, this.drinkT - dt);
+    if (this.shield.hits > 0) {
+      this.shield.t -= dt;
+      if (this.shield.t <= 0) { this.shield.hits = 0; game.audio.play('glassBreak', { x: this.x, gain: 0.4 }); }
+    }
     this.flash = Math.max(0, this.flash - dt * 5);
     this.comboT = Math.max(0, this.comboT - dt);
     this.dropT = Math.max(0, this.dropT - dt);
@@ -122,10 +166,15 @@ export class Player extends Entity {
     const world = game.world;
     const water = this.inWater ? 0.62 : 1;
 
+    this._upHeld = input.down('up') && !input.down('down');
+    if (input.pressed('spellNext')) this.cycleSpell(game, 1);
+    if (input.pressed('spellPrev')) this.cycleSpell(game, -1);
+    if (input.pressed('quickItem')) this.useQuickItem(game);
+
     // --- Aktionen auslösen (nur wenn keine läuft) ---
     if (!this.action) {
       if (input.pressed('attack')) this._startAttack(game);
-      else if (input.pressed('lance') && this.abilities.lance) this._startCast(game);
+      else if (input.pressed('lance') && this.currentSpell()) this._startCast(game);
       else if (input.pressed('wolfClaw') && this.abilities.wolf) this._startClaw(game);
       else if (input.pressed('drain')) this._contextAction(game);
     } else if (this.action.kind === 'attack' && input.pressed('attack')) {
@@ -230,16 +279,28 @@ export class Player extends Entity {
 
   _startAttack(game) {
     const air = !this.onGround;
-    let def;
-    if (air) def = AIR_ATTACK;
+    let base;
+    if (this._upHeld) { base = UP_ATTACK; this.comboStep = 0; }
+    else if (air) base = AIR_ATTACK;
     else {
       this.comboStep = this.comboT > 0 ? (this.comboStep % 3) + 1 : 1;
-      def = COMBO[this.comboStep - 1];
+      base = COMBO[this.comboStep - 1];
     }
-    this.action = { kind: 'attack', def, t: 0, id: newAttackId(), air, lunged: false, hitAny: false };
+    // Waffe einrechnen: Tempo, Reichweite, Schaden, Wucht.
+    const g = this.gear;
+    const def = {
+      ...base,
+      dur: base.dur * g.speed,
+      w: base.w * g.reach,
+      h: base.h * (1 + (g.reach - 1) * 0.6),
+      dmg: base.dmg * g.dmg * (this.buffs.rage > 0 ? 1.5 : 1),
+      heavy: !!base.heavy || g.heavy,
+      lunge: base.lunge * (0.7 + 0.3 * g.speed),
+    };
+    this.action = { kind: 'attack', def, t: 0, id: newAttackId(), air, lunged: false, hitAny: false, swung: false, impacted: false };
     this.comboQueued = false;
     this.trail.length = 0;
-    game.audio.play('swing', { x: this.x, gain: def.heavy ? 1.2 : 1 });
+    this._lastBlade = null;
   }
 
   _updateAction(dt, game, input) {
@@ -262,23 +323,44 @@ export class Player extends Entity {
       if (d.heavy) game.particles.dust(this.x - this.facing * 6, this.y, 6);
     }
 
+    // Zischen der Klinge genau dann, wenn sie losschnellt.
+    if (!a.swung && k >= SLASHES[d.anim].trail[0]) {
+      a.swung = true;
+      game.audio.play('swing', { x: this.x, gain: d.heavy ? 1.2 : 1 });
+    }
+    // Schwerer Schlag: Aufprall auf dem Boden
+    if (d.impact && !a.impacted && k >= d.impact) {
+      a.impacted = true;
+      if (this.onGround) {
+        game.particles.dust(this.x + this.facing * 26, this.y, 10);
+        game.particles.debris(this.x + this.facing * 26, this.y - 2, game.zone.tiles.base, 4, 160);
+        game.fx.shake(0.28);
+        game.audio.play('land', { x: this.x, gain: 0.8 });
+      }
+    }
+
     if (k >= d.on[0] && k <= d.on[1]) {
+      const back = d.up ? 12 : 0;   // Hieb nach oben reicht auch etwas hinter den Kopf
       const hb = {
         id: a.id, team: 'player',
-        x: this.facing > 0 ? this.x : this.x - d.w, y: this.y + d.dy - d.h / 2, w: d.w, h: d.h,
-        dir: this.facing, heavy: !!d.heavy,
-        damage: d.dmg, source: this,
+        x: this.facing > 0 ? this.x - back : this.x - d.w + back, y: this.y + d.dy - d.h / 2, w: d.w, h: d.h,
+        dir: this.facing, heavy: !!d.heavy, breaksShield: !!(d.heavy && this.gear.heavy),
+        damage: d.dmg, source: this, critChance: this.gear.crit,
+        onHit: this.gear.lifesteal ? (t, dealt) => {
+          const v = Math.max(1, Math.round((dealt || 0) * this.gear.lifesteal));
+          if (this.hp < this.maxHp) { this.heal(v); game.damageNumber(this.x, this.y - 40, '+' + v, '#ff8aa0'); }
+        } : null,
       };
       const hits = resolveAttack(game, hb, game.hurtables());
       if (hits) {
         a.hitAny = true;
-        this.gainBlood(PLAYER.bloodPerHit * hits);
+        this.gainBlood(PLAYER.bloodPerHit * this.gear.bloodPerHit * hits);
       }
       // Morsche Mauern bröckeln nur unter der Wolfsklaue – die Klinge prallt ab.
     }
 
     if (a.t >= d.dur) {
-      const next = this.comboQueued && !a.air && this.onGround;
+      const next = this.comboQueued && !a.air && this.onGround && !d.up;
       this.action = null;
       this.comboT = 0.42;
       if (next) this._startAttack(game);
@@ -289,22 +371,120 @@ export class Player extends Entity {
   // --- Blutlanze -------------------------------------------------------------
 
   _startCast(game) {
-    if (!this.spendBlood(COST.bloodLance, game)) return;
-    this.action = { kind: 'cast', t: 0, dur: 0.34, fired: false };
+    const id = this.currentSpell();
+    if (!id) return;
+    if (id === 'blutschild' && this.shield.hits >= 3) { game.audio.play('uiDeny'); return; }
+    if (!this.spendBlood(this.spellCost(id), game)) return;
+    this.action = { kind: 'cast', t: 0, dur: id === 'blutregen' ? 0.6 : 0.34, fired: false, spell: id };
     this.vx *= 0.3;
   }
 
   _updateCast(dt, game) {
     const a = this.action;
-    if (!a.fired && a.t >= 0.12) {
+    const fireAt = a.spell === 'blutregen' ? 0.3 : 0.12;
+    if (!a.fired && a.t >= fireAt) {
       a.fired = true;
-      const dmg = rollDamage(24, this.power, 0.1);
-      game.spawnProjectile(new BloodLance(this.x + this.facing * 14, this.y - 20, this.facing, dmg));
-      game.audio.play('lance', { x: this.x });
-      game.particles.blood(this.x + this.facing * 10, this.y - 20, this.facing > 0 ? 0 : Math.PI, 6, 160);
-      game.fx.shake(0.1);
+      this._fireSpell(game, a.spell);
     }
     if (a.t >= a.dur) this.action = null;
+  }
+
+  _fireSpell(game, id) {
+    const sp = this.gear.spellPower * (this.buffs.rage > 0 ? 1.5 : 1);
+    const hx = this.x + this.facing * 14, hy = this.y - 20;
+    switch (id) {
+      case 'lance': {
+        const dmg = rollDamage(24 * sp, this.power, 0.1);
+        game.spawnProjectile(new BloodLance(hx, hy, this.facing, dmg));
+        game.audio.play('lance', { x: this.x });
+        game.particles.blood(hx - this.facing * 4, hy, this.facing > 0 ? 0 : Math.PI, 6, 160);
+        game.fx.shake(0.1);
+        break;
+      }
+      case 'fledermaeuse':
+        for (let i = 0; i < 4; i++) {
+          const a = (this.facing > 0 ? 0 : Math.PI) + (i - 1.5) * 0.45;
+          game.spawnProjectile(batSwarm(hx, hy - 4 + i * 2, a, rollDamage(11 * sp, this.power, 0.08), i));
+        }
+        game.audio.play('bat', { x: this.x });
+        game.particles.bats(hx, hy, 6);
+        break;
+      case 'hoellenfeuer':
+        for (const off of [-0.28, 0, 0.28]) {
+          const a = (this.facing > 0 ? 0 : Math.PI) + off * this.facing;
+          game.spawnProjectile(hellfire(hx, hy, a, rollDamage(15 * sp, this.power, 0.1)));
+        }
+        game.audio.play('explosion', { x: this.x, gain: 0.5 });
+        game.particles.embers(hx, hy, '#ffb040', 10, 20);
+        game.fx.shake(0.12);
+        break;
+      case 'blutschild':
+        this.shield = { hits: 3, t: 15 };
+        game.audio.play('drainFinish', { x: this.x });
+        game.particles.ring(this.x, this.y - 18, '#ff4060', 5, 50, 0.5);
+        game.particles.blood(this.x, this.y - 18, -Math.PI / 2, 12, 120);
+        break;
+      case 'blutregen': {
+        game.audio.play('thunder', { x: this.x, gain: 0.7 });
+        game.renderer.doFlash(160, 0, 20, 0.35);
+        game.fx.shake(0.4);
+        const reach = 230;
+        const hb = { id: newAttackId(), team: 'player', x: this.x - reach, y: this.y - 140, w: reach * 2, h: 170, dir: this.facing, heavy: true, damage: Math.round(30 * sp), critChance: 0.1 };
+        const hits = resolveAttack(game, hb, game.hurtables());
+        const heal = 10 + hits * 4;
+        this.heal(heal);
+        game.damageNumber(this.x, this.y - 40, '+' + heal, '#ff8aa0');
+        for (let i = 0; i < 40; i++) {
+          const x = this.x + (Math.random() - 0.5) * reach * 2;
+          game.particles.blood(x, this.y - 120 - Math.random() * 40, Math.PI / 2, 1, 260);
+        }
+        break;
+      }
+      default: break;
+    }
+  }
+
+  // --- Tränke ------------------------------------------------------------------
+
+  /** Trank auf der Schnelltaste trinken (ist er leer, den nächsten vorhandenen). */
+  useQuickItem(game) {
+    const inv = this.save.inventory;
+    let id = this.save.quickItem;
+    if (!inv[id]) {
+      id = Object.keys(CONSUMABLES).find((k) => inv[k] > 0) || null;
+      if (id) this.save.quickItem = id;
+    }
+    if (!id) {
+      game.audio.play('uiDeny');
+      game.hud.notify('Keine Tränke', 'Der Händler hat welche.', '#c8b8c4');
+      return false;
+    }
+    return this.useItem(game, id);
+  }
+
+  useItem(game, id) {
+    const it = CONSUMABLES[id];
+    const inv = this.save.inventory;
+    if (!it || !inv[id] || this.state === 'dead' || this.drinkT > 0) return false;
+    if (it.heal && !it.blood && this.hp >= this.maxHp) { game.audio.play('uiDeny'); game.hud.notify('Schon bei voller Kraft', it.name + ' bleibt im Beutel.', '#c8b8c4'); return false; }
+    if (it.blood && !it.heal && this.blood >= this.maxBlood) { game.audio.play('uiDeny'); game.hud.notify('Schon voller Blut', it.name + ' bleibt im Beutel.', '#c8b8c4'); return false; }
+    inv[id]--;
+    if (inv[id] <= 0) delete inv[id];
+    this.drinkT = 0.45;
+    game.audio.play('drink', { x: this.x });
+    if (it.heal) {
+      const v = Math.min(this.maxHp - this.hp, it.heal);
+      this.heal(it.heal);
+      if (v > 0) game.damageNumber(this.x, this.y - 40, '+' + Math.round(v), '#ff8aa0');
+    }
+    if (it.blood) this.gainBlood(it.blood);
+    if (it.buff) {
+      this.buffs[it.buff.kind] = it.buff.t;
+      game.hud.notify(it.name, it.desc, it.color);
+    }
+    game.particles.ring(this.x, this.y - 18, it.color, 4, 40, 0.4);
+    game.particles.embers(this.x, this.y - 10, it.color, 8, 16);
+    return true;
   }
 
   // --- Wolfsklaue ------------------------------------------------------------
@@ -358,7 +538,7 @@ export class Player extends Entity {
     this.facing = this.dashDir;
     this.mist = !!this.abilities.mist;
     this.dashT = PLAYER.dashTime * (this.mist ? 1.3 : 1);
-    this.dashCd = PLAYER.dashCooldown;
+    this.dashCd = PLAYER.dashCooldown * this.gear.dashCd;
     if (!this.onGround) this.airDashUsed = true;
     this.vy = 0;
     if (this.mist) {
@@ -406,7 +586,20 @@ export class Player extends Entity {
 
   hurt(game, amount, fromX, opts = {}) {
     if (this.invuln > 0 || this.state === 'dead' || this.state === 'drain' || this.locked) return false;
-    const dmg = Math.max(1, Math.round(amount * difficultyOf(game.settings).dmgTaken));
+    // Blutschild fängt den Treffer ganz ab.
+    if (this.shield.hits > 0 && !opts.unblockable) {
+      this.shield.hits--;
+      this.invuln = 0.6;
+      game.audio.play('parry', { x: this.x });
+      game.particles.blood(this.x, this.y - 18, -Math.PI / 2, 14, 180);
+      game.particles.ring(this.x, this.y - 18, '#ff4060', 4, 44, 0.35);
+      game.fx.hitstop(0.05);
+      if (this.shield.hits === 0) game.audio.play('glassBreak', { x: this.x, gain: 0.6 });
+      return 'blocked';
+    }
+    // Rüstung und Steinhaut schlucken einen Teil des Schadens.
+    const armor = (1 - this.gear.def) * (this.buffs.stone > 0 ? 0.6 : 1);
+    const dmg = Math.max(1, Math.round(amount * difficultyOf(game.settings).dmgTaken * armor));
     this.hp -= dmg;
     this.flash = 1;
     this.invuln = PLAYER.invulnAfterHit;
@@ -595,11 +788,12 @@ export class Player extends Entity {
     else if (this.state === 'drain') anim = 'drain';
     else if (this.state === 'hurt') anim = 'hurt';
     else if (this.state === 'dash') anim = this.dashDir === this.facing ? 'dash' : 'backdash';
-    else if (this.action?.kind === 'attack') { anim = this.action.def.anim; opts.progress = this.action.t / this.action.def.dur; hl = 0.012; }
+    else if (this.action?.kind === 'attack') { anim = this.action.def.anim; opts.progress = this.action.t / this.action.def.dur; hl = 0.008; }
     else if (this.action?.kind === 'cast') { anim = 'cast'; opts.progress = this.action.t / this.action.dur; hl = 0.015; }
     else if (this.action?.kind === 'claw') { anim = 'claw'; opts.progress = this.action.t / this.action.dur; hl = 0.015; }
     else if (!this.onGround) anim = this.gliding ? 'fall' : this.vy < -40 ? 'jump' : 'fall';
     else if (this.landT > 0) anim = 'land';
+    else if (this.drinkT > 0) anim = 'drink';
     else if (Math.abs(this.vx) > 25) {
       anim = 'run';
       this.runPhase += dt * Math.abs(this.vx) * 0.058;
@@ -611,23 +805,42 @@ export class Player extends Entity {
     this.pose = blendPose(this.pose, target, 1 - Math.pow(2, -dt / hl));
     this.rig = solveRig(this.pose);
 
-    // Klingenspur mitschreiben
-    if (this.action?.kind === 'attack') {
-      const hand = this.rig.armF.hand;
-      const ang = this.rig.armF.angle;
-      const wa = this.pose.weaponAngle;
-      // Klinge verlängert den Unterarm; weaponAngle kippt sie zusätzlich
-      // (Bogenmaß, positiv = im Uhrzeigersinn, also nach vorn-unten).
-      const dirA = -ang + Math.PI / 2 + wa;
-      const len = this.action.def.heavy ? 26 : 22;
-      const bx = this.x + this.facing * (hand.x + Math.cos(dirA) * 3), by = this.y + hand.y + Math.sin(dirA) * 3;
-      const tx = this.x + this.facing * (hand.x + Math.cos(dirA) * len), ty = this.y + hand.y + Math.sin(dirA) * len;
-      this.trail.push({ bx, by, tx, ty, life: 0.14 });
-      if (this.trail.length > 10) this.trail.shift();
-      this.blade = { bx, by, tx, ty };
-    } else {
-      this.blade = null;
-    }
+    // Klinge in Weltkoordinaten (für Leuchten, Spur und Funken)
+    const hand = this.rig.armF.hand;
+    const la = this.pose.bladeA;
+    const wa = this.facing > 0 ? la : Math.PI - la;           // Winkel in der Welt
+    const hx = this.x + this.facing * hand.x, hy = this.y + hand.y;
+    const len = this.gear.weapon.len * this.rig.sz;
+    this.blade = { hx, hy, a: wa, len };
+
+    // Klingenspur: nur während des eigentlichen Hiebs, dicht nachgefüllt,
+    // damit der Bogen auch bei schnellen Schlägen rund bleibt.
+    const a = this.action;
+    if (a?.kind === 'attack') {
+      const k = a.t / a.def.dur;
+      const [t0, t1] = SLASHES[a.def.anim].trail;
+      if (k >= t0 && k <= t1) {
+        const prev = this._lastBlade;
+        const add = (x, y, ang) => {
+          this.trail.push({
+            ix: x + Math.cos(ang) * len * 0.55, iy: y + Math.sin(ang) * len * 0.55,
+            tx: x + Math.cos(ang) * (len + 2), ty: y + Math.sin(ang) * (len + 2), life: 0.13,
+          });
+        };
+        if (prev) {
+          let d = (wa - prev.a) % (Math.PI * 2);
+          if (d > Math.PI) d -= Math.PI * 2; else if (d < -Math.PI) d += Math.PI * 2;
+          const n = Math.min(6, Math.floor(Math.abs(d) / 0.1));
+          for (let i = 1; i <= n; i++) {
+            const u = i / (n + 1);
+            add(prev.hx + (hx - prev.hx) * u, prev.hy + (hy - prev.hy) * u, prev.a + d * u);
+          }
+        }
+        add(hx, hy, wa);
+        this._lastBlade = { hx, hy, a: wa };
+        while (this.trail.length > 48) this.trail.shift();
+      } else this._lastBlade = null;
+    } else this._lastBlade = null;
     for (const p of this.trail) p.life -= dt;
     while (this.trail.length && this.trail[0].life <= 0) this.trail.shift();
   }
@@ -671,7 +884,7 @@ export class Player extends Entity {
     // Nachbilder
     for (const g of this.afterimages) {
       const a = (g.life / 0.22) * (g.mist ? 0.25 : 0.4);
-      drawHumanoid(ctx, g.x, g.y, g.facing, g.pose, GHOST, { alpha: a });
+      drawHumanoid(ctx, g.x, g.y, g.facing, g.pose, this.ghostCostume, { alpha: a, noWeapon: true });
     }
 
     if (this.state === 'dead' && this.deathT > 1.4) return; // zu Asche zerfallen
@@ -683,8 +896,8 @@ export class Player extends Entity {
 
     if (this.gliding) this._drawBatWings(ctx, game.time);
 
-    drawHumanoid(ctx, this.x, this.y, this.facing, this.pose, COSTUMES.ingomar, {
-      cape: this.cape, hair: this.hair, alpha,
+    drawHumanoid(ctx, this.x, this.y, this.facing, this.pose, this.costume, {
+      cape: this.cape, hair: this.hair, alpha, blade: this.gear.weapon,
       flash: this.flash * 0.8,
       flashColor: this.holyExposure > 0 ? `rgba(255,240,200,${this.flash})` : `rgba(255,255,255,${this.flash * 0.8})`,
     });
@@ -729,32 +942,73 @@ export class Player extends Entity {
     if (this.rig && !(this.state === 'dash' && this.mist)) {
       drawEyesGlow(ctx, this.x, this.y, this.facing, this.rig, '#ff1f35', isGlow);
     }
-    // Klingenspur: leuchtender Bogen aus geronnenem Blut
+    // Klingenspur: leuchtender Sichelbogen in der Farbe der Waffe
+    const w = this.gear.weapon;
     if (this.trail.length > 1) {
-      for (let i = 1; i < this.trail.length; i++) {
+      const n = this.trail.length;
+      for (let i = 1; i < n; i++) {
         const a = this.trail[i - 1], b = this.trail[i];
-        const k = i / this.trail.length;
-        ctx.globalAlpha = clamp(b.life / 0.14, 0, 1) * k * (isGlow ? 0.7 : 0.85);
-        ctx.fillStyle = isGlow ? '#ff1030' : k > 0.7 ? '#ffd0d6' : '#ff2a40';
+        const k = i / n;
+        ctx.globalAlpha = clamp(b.life / 0.13, 0, 1) ** 1.5 * k * k * (isGlow ? 0.55 : 0.6);
+        ctx.fillStyle = isGlow ? w.glow : k > 0.85 ? '#ffe8ec' : w.edge;
         ctx.beginPath();
-        ctx.moveTo(a.bx, a.by); ctx.lineTo(a.tx, a.ty); ctx.lineTo(b.tx, b.ty); ctx.lineTo(b.bx, b.by);
+        ctx.moveTo(a.ix, a.iy); ctx.lineTo(a.tx, a.ty); ctx.lineTo(b.tx, b.ty); ctx.lineTo(b.ix, b.iy);
         ctx.closePath();
         ctx.fill();
       }
+      // Heller Saum an der Außenkante
+      if (!isGlow) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 0.9;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        const start = Math.max(0, n - 12);
+        ctx.moveTo(this.trail[start].tx, this.trail[start].ty);
+        for (let i = start + 1; i < n; i++) {
+          ctx.globalAlpha = clamp(this.trail[i].life / 0.13, 0, 1);
+          ctx.lineTo(this.trail[i].tx, this.trail[i].ty);
+        }
+        ctx.stroke();
+      }
       ctx.globalAlpha = 1;
     }
-    // Die Klinge selbst
-    if (this.blade) {
-      const b = this.blade;
-      ctx.strokeStyle = isGlow ? '#ff2040' : '#ff6070';
-      ctx.lineWidth = isGlow ? 4 : 2.2;
-      ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(b.bx, b.by); ctx.lineTo(b.tx, b.ty); ctx.stroke();
-      if (!isGlow) {
-        ctx.strokeStyle = '#fff0f2';
-        ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.moveTo(b.bx, b.by); ctx.lineTo(b.tx, b.ty); ctx.stroke();
+    // Leuchtende Schneide während des Hiebs, sonst nur ein Glimmen im Edelstein
+    const bl = this.blade;
+    if (bl && !(this.state === 'dash' && this.mist) && this.state !== 'dead') {
+      const cx = Math.cos(bl.a), cy = Math.sin(bl.a);
+      if (this.action?.kind === 'attack') {
+        ctx.strokeStyle = isGlow ? w.glow : w.edge;
+        ctx.lineWidth = isGlow ? 3 : 0.8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bl.hx + cx * bl.len * 0.25, bl.hy + cy * bl.len * 0.25);
+        ctx.lineTo(bl.hx + cx * bl.len, bl.hy + cy * bl.len);
+        ctx.stroke();
       }
+      ctx.fillStyle = isGlow ? w.glow : w.gem;
+      ctx.beginPath(); ctx.arc(bl.hx + cx * 0.7, bl.hy + cy * 0.7, isGlow ? 2.2 : 0.6, 0, Math.PI * 2); ctx.fill();
+    }
+    // Blutschild: pulsierende Kugel mit Resttreffern
+    if (this.shield.hits > 0) {
+      const k = 0.7 + 0.3 * Math.sin(this.age * 6);
+      const fade = clamp(this.shield.t / 1.5, 0, 1);
+      ctx.globalAlpha = (isGlow ? 0.35 : 0.22) * k * fade;
+      ctx.fillStyle = '#ff2a48';
+      ctx.beginPath(); ctx.arc(this.x, this.y - 16, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = (isGlow ? 0.8 : 0.7) * fade;
+      ctx.strokeStyle = '#ff6078'; ctx.lineWidth = isGlow ? 3 : 1;
+      for (let i = 0; i < this.shield.hits; i++) {
+        const a0 = this.age * 1.5 + (i / 3) * Math.PI * 2;
+        ctx.beginPath(); ctx.arc(this.x, this.y - 16, 22, a0, a0 + 1.4); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    // Zornestrank: rotes Flackern um die Gestalt
+    if (this.buffs.rage > 0 && isGlow) {
+      ctx.globalAlpha = 0.25 + 0.15 * Math.sin(this.age * 14);
+      ctx.fillStyle = '#ff5020';
+      ctx.beginPath(); ctx.ellipse(this.x, this.y - 16, 12, 20, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     }
     // Wolfsklaue: drei leuchtende Krallenspuren
     if (this.action?.kind === 'claw') {

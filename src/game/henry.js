@@ -27,8 +27,13 @@ export class Henry extends Entity {
   }
 
   /** Sprechblase anzeigen (ersetzt eine laufende). */
-  say(text, dur = 4.5) {
-    this.bubble = { text, t: 0, dur };
+  /**
+   * Sprechblase anzeigen (ersetzt eine laufende). Ohne feste Dauer bleibt sie
+   * stehen, bis der Spieler X (Angriff) oder Bestätigen drückt – so kann man
+   * in Ruhe lesen.
+   */
+  say(text, dur = null) {
+    this.bubble = { text, t: 0, dur: dur ?? 60, wait: dur == null };
   }
 
   transform(game, form) {
@@ -43,7 +48,15 @@ export class Henry extends Entity {
   update(dt, game) {
     super.update(dt, game);
     const p = game.player;
-    if (this.bubble) { this.bubble.t += dt; if (this.bubble.t > this.bubble.dur) this.bubble = null; }
+    if (this.bubble) {
+      const b = this.bubble;
+      b.t += dt;
+      if (b.wait && b.t > 1.2 && !game.dialogue.active && (game.input.pressed('attack') || game.input.pressed('confirm'))) {
+        b.wait = false;
+        b.dur = b.t + 0.35;   // kurz ausblenden
+      }
+      if (b.t > b.dur) this.bubble = null;
+    }
 
     if (this.form === 'boy') {
       // Steht still (Zwischensequenz); Pose atmet

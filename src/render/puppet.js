@@ -7,6 +7,82 @@
 
 import { TAU, clamp, lerp } from '../core/math.js';
 import { CHAR_SCALE } from '../data/config.js';
+import { WEAPONS } from '../data/gear.js';
+
+// === Schwerthiebe des Fürsten =================================================
+//
+// Jeder Hieb ist eine Folge von Schlüsselbildern über den Fortschritt k (0…1):
+// Ausholen (langsam, Spannung aufbauen) → Hieb (sehr schnell) → Nachschwingen
+// (langsam auslaufen). `blade` ist der Winkel der Klinge in Bogenmaß
+// (0 = nach vorn, +π/2 = nach unten, −π/2 = nach oben), `arm` der Winkel des
+// Arms, `el` die Beugung im Ellbogen. Die Treffer-Fenster in game/player.js
+// liegen genau auf der Hieb-Phase.
+
+const EASE = {
+  lin: (u) => u,
+  out: (u) => 1 - (1 - u) ** 3,          // schnell los, weich ankommen
+  in: (u) => u * u * u,                  // Wucht: beschleunigt bis zum Aufprall
+  io: (u) => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2),
+};
+
+function keyed(k, frames) {
+  if (k <= frames[0][0]) return frames[0][1];
+  for (let i = 0; i < frames.length - 1; i++) {
+    const [t0, v0] = frames[i], [t1, v1, e = 'io'] = frames[i + 1];
+    if (k <= t1) return v0 + (v1 - v0) * EASE[e]((k - t0) / Math.max(1e-6, t1 - t0));
+  }
+  return frames[frames.length - 1][1];
+}
+
+export const SLASHES = {
+  // Schräger Hieb: über den Kopf ausholen, nach vorn-unten durchziehen.
+  attack1: {
+    blade: [[0, -0.6], [0.18, -2.35, 'out'], [0.46, 1.0, 'out'], [0.72, 1.25, 'out'], [1, 1.05]],
+    arm: [[0, -0.4], [0.18, -1.8, 'out'], [0.46, 0.55, 'out'], [0.72, 0.7], [1, 0.6]],
+    el: [[0, 0.4], [0.18, 1.1], [0.46, 0.05, 'out'], [1, 0.2]],
+    lean: [[0, 0], [0.18, -0.18], [0.46, 0.38, 'out'], [1, 0.25]],
+    step: [[0, 0], [0.2, 0.1], [0.46, 1, 'out'], [1, 0.8]],
+    trail: [0.2, 0.62],
+  },
+  // Aufwärtsschnitt: tief hinten ansetzen, vorn nach oben reißen.
+  attack2: {
+    blade: [[0, 1.2], [0.18, 2.25, 'out'], [0.46, -1.9, 'out'], [0.72, -2.15, 'out'], [1, -1.9]],
+    arm: [[0, 0.9], [0.18, 1.45, 'out'], [0.46, -1.35, 'out'], [0.72, -1.5], [1, -1.3]],
+    el: [[0, 0.3], [0.18, 0.5], [0.46, 0.0, 'out'], [1, 0.2]],
+    lean: [[0, 0.2], [0.18, 0.4], [0.46, -0.2, 'out'], [1, -0.1]],
+    crouch: [[0, 0.1], [0.18, 0.35], [0.46, 0, 'out'], [1, 0]],
+    step: [[0, 0.5], [0.46, 0.7], [1, 0.6]],
+    trail: [0.2, 0.62],
+  },
+  // Schwerer Schlag: weit hinter den Kopf, dann mit ganzem Gewicht in den Boden.
+  attack3: {
+    blade: [[0, -1.2], [0.28, -2.75, 'io'], [0.5, 1.45, 'in'], [0.78, 1.5], [1, 1.25]],
+    arm: [[0, -1.0], [0.28, -2.05, 'io'], [0.5, 0.95, 'in'], [0.78, 1.0], [1, 0.8]],
+    el: [[0, 0.8], [0.28, 1.0], [0.5, 0, 'in'], [1, 0.2]],
+    lean: [[0, 0], [0.28, -0.28], [0.5, 0.5, 'in'], [0.78, 0.42], [1, 0.25]],
+    crouch: [[0, 0], [0.28, 0.05], [0.52, 0.38, 'in'], [0.8, 0.3], [1, 0.1]],
+    step: [[0, 0.2], [0.28, 0.1], [0.5, 1.25, 'in'], [1, 1]],
+    trail: [0.3, 0.6],
+  },
+  // Luftangriff: großer Bogen über vorn bis unter den Körper.
+  airAttack: {
+    blade: [[0, -1.2], [0.12, -2.5, 'out'], [0.6, 2.2, 'out'], [1, 2.0]],
+    arm: [[0, -1.0], [0.12, -1.85, 'out'], [0.6, 1.1, 'out'], [1, 1.0]],
+    el: [[0, 0.5], [0.12, 0.8], [0.6, 0.05, 'out'], [1, 0.2]],
+    lean: [[0, 0], [0.12, -0.15], [0.6, 0.35, 'out'], [1, 0.2]],
+    trail: [0.14, 0.72],
+  },
+  // Hieb nach oben (Hoch + Angriff): vorn-unten ansetzen, über den Kopf reißen.
+  attackUp: {
+    blade: [[0, 0.8], [0.16, 1.35, 'out'], [0.46, -2.55, 'out'], [0.72, -2.8, 'out'], [1, -2.5]],
+    arm: [[0, 0.7], [0.16, 1.0, 'out'], [0.46, -1.95, 'out'], [0.72, -2.05], [1, -1.8]],
+    el: [[0, 0.4], [0.16, 0.5], [0.46, 0.0, 'out'], [1, 0.2]],
+    lean: [[0, 0.1], [0.16, 0.25], [0.46, -0.25, 'out'], [1, -0.15]],
+    crouch: [[0, 0.1], [0.16, 0.3], [0.46, 0, 'out'], [1, 0]],
+    step: [[0, 0.3], [1, 0.4]],
+    trail: [0.18, 0.66],
+  },
+};
 
 // === Stoffsimulation ========================================================
 
@@ -155,45 +231,30 @@ export function makePose(anim, t, opts = {}) {
     case 'attack1':
     case 'attack2':
     case 'attack3':
+    case 'attackUp':
     case 'airAttack': {
-      // k: 0 = Ausholen, 1 = Durchziehen
       const k = clamp(opts.progress ?? 0, 0, 1);
-      const windup = k < 0.25 ? k / 0.25 : 1;
-      const swing = k < 0.25 ? 0 : clamp((k - 0.25) / 0.35, 0, 1);
-      if (anim === 'attack1') {
-        // Schräger Hieb von oben nach vorn. Winkel: 0 = unten, π/2 = vorn,
-        // π = oben. Der Bogen läuft über den Kopf (3,7 → 1,5) und bleibt
-        // damit vor dem Körper – nie hinter dem Rücken durch.
-        p.shF = lerp(lerp(0.3, 3.7, windup), 1.5, swing);
-        p.elF = lerp(-0.5, 0.1, swing);
-        p.lean = lerp(-0.1, 0.35, swing);
-        p.hipF = 0.5; p.kneeF = 0.5; p.hipB = -0.5; p.kneeB = 0.3;
-        p.weaponAngle = lerp(0.5, 0.3, swing);
-      } else if (anim === 'attack2') {
-        // Aufwärtsschnitt: von vorn-unten über vorn nach oben
-        p.shF = lerp(lerp(0.3, 0.7, windup), 2.9, swing);
-        p.elF = lerp(0.3, -0.1, swing);
-        p.lean = lerp(0.3, -0.15, swing);
-        p.hipF = 0.4; p.kneeF = 0.7; p.hipB = -0.4; p.kneeB = 0.3;
-        p.crouch = lerp(0.25, 0, swing);
-        p.weaponAngle = lerp(0.2, -0.3, swing);
-      } else if (anim === 'attack3') {
-        // Schwerer Stoß nach vorn: Arm zurückziehen, dann gerade durchstoßen
-        p.shF = lerp(lerp(0.2, -0.3, windup), 1.55, swing);
-        p.elF = lerp(lerp(0.2, 1.4, windup), 0, swing);
-        p.lean = lerp(-0.2, 0.55, swing);
-        p.hipF = lerp(0.2, 1.0, swing); p.kneeF = lerp(0.3, 0.7, swing);
-        p.hipB = lerp(-0.2, -0.8, swing); p.kneeB = 0.2;
-        p.weaponAngle = 0;
+      const S = SLASHES[anim];
+      p.bladeA = keyed(k, S.blade);
+      const armA = keyed(k, S.arm);
+      p.elF = keyed(k, S.el);
+      // Armwinkel (0 = unten, π/2 = vorn) so wählen, dass der Arm im Mittel
+      // in Richtung `arm` zeigt – die Hand führt die Klinge.
+      p.shF = Math.PI / 2 - armA - p.elF / 2;
+      p.lean = keyed(k, S.lean);
+      p.crouch = S.crouch ? keyed(k, S.crouch) : 0;
+      if (anim === 'airAttack') {
+        p.hipF = 0.9; p.kneeF = 1.5; p.hipB = -0.1; p.kneeB = 1.0;
       } else {
-        // Luftangriff: großer Bogen über den Kopf nach vorn-unten
-        p.shF = lerp(lerp(0.3, 3.5, windup), 1.0, swing);
-        p.elF = 0.2;
-        p.hipF = 0.8; p.kneeF = 1.4; p.hipB = -0.1; p.kneeB = 0.9;
-        p.weaponAngle = lerp(0.5, 0.4, swing);
+        // Ausfallschritt: vorderes Bein vor, hinteres gestreckt zurück.
+        const st = S.step ? keyed(k, S.step) : 0.5;
+        p.hipF = 0.2 + st * 0.65; p.kneeF = 0.3 + st * 0.35;
+        p.hipB = -0.2 - st * 0.55; p.kneeB = 0.25;
       }
-      p.shB = -0.6; p.elB = 0.9;
-      p.weapon = k < 0.85 ? 1 : (1 - k) / 0.15;
+      // Freier Arm hält das Gleichgewicht – gegenläufig zum Schwertarm.
+      p.shB = -0.2 - Math.sin(armA) * 0.6; p.elB = 0.9;
+      p.head = -p.lean * 0.35;
+      p.weapon = 1;
       break;
     }
     case 'cast': {
@@ -261,6 +322,14 @@ export function makePose(anim, t, opts = {}) {
       p.crouch = 0.2; p.lean = 0.1;
       break;
     }
+    case 'drink': {
+      // Trank an die Lippen: Arm hoch, Kopf in den Nacken
+      p.shF = 3.0; p.elF = 2.1; p.shB = -0.2; p.elB = 0.5;
+      p.head = -0.35; p.lean = -0.08;
+      p.hipF = 0.06; p.hipB = -0.06;
+      p.bladeA = 1.35;   // Schwert hängt locker in der anderen Hand – hier: gesenkt
+      break;
+    }
     case 'pray': {
       const b = Math.sin(t * 2.5) * 0.05;
       p.shF = -0.9 + b; p.elF = 1.9; p.shB = -0.8 + b; p.elB = 1.9;
@@ -279,13 +348,24 @@ export function makePose(anim, t, opts = {}) {
     }
     default: break;
   }
+  // Ohne eigene Schwertführung liegt die Klinge in Verlängerung des Unterarms,
+  // leicht nach vorn gekippt – so hält man ein Schwert in Ruhe.
+  if (p.bladeA === undefined) p.bladeA = Math.PI / 2 - (p.shF + p.elF) - 0.15;
   return p;
 }
 
 /** Zwei Posen mischen (für weiche Übergänge). */
 export function blendPose(a, b, t) {
   const out = {};
-  for (const k in a) out[k] = lerp(a[k], b[k] ?? a[k], t);
+  for (const k in a) {
+    const bv = b[k] ?? a[k];
+    if (k === 'bladeA') {
+      // Winkel auf dem kürzesten Weg mischen – sonst dreht die Klinge einmal rundherum.
+      let d = (bv - a[k]) % TAU;
+      if (d > Math.PI) d -= TAU; else if (d < -Math.PI) d += TAU;
+      out[k] = a[k] + d * t;
+    } else out[k] = lerp(a[k], bv, t);
+  }
   return out;
 }
 
@@ -452,7 +532,7 @@ export const COSTUMES = {
     hair: '#f4f1fb', hairShade: '#aea8c8', hairL: '#ffffff',
     lace: '#f6f2f4', laceShade: '#bdb4c4',
     eyes: '#ff1f35', body: 'lord', headwear: 'none', hairStyle: 'lord',
-    cape: true, collar: true, ears: true, claws: true, width: 1,
+    cape: true, collar: true, ears: true, claws: true, width: 1, weapon: 'lordsword',
   },
   novice: {
     skin: '#e2c0a4', skinShade: '#a8876f',
@@ -536,6 +616,13 @@ export const COSTUMES = {
     hair: '#1e1422', hairShade: '#0c0810', hairL: '#4e3a58',
     eyes: '#ff1f35', body: 'robe', headwear: 'circlet', hairStyle: 'lord', ears: true, width: 1.0,
     cape: true, capeColor: '#2a0a14', capeShade: '#14040a', liningColor: '#b01330', liningShade: '#6c0719',
+  },
+  // Mortimer, der fahrende Händler – Ghul, Geschäftsmann, Plaudertasche
+  mortimer: {
+    skin: '#b8c4a8', skinShade: '#7a8a6a', skinL: '#e0e8d0',
+    coat: '#3e4a2c', coatShade: '#1e2616', coatL: '#6a7a4a', trim: '#c8a050', trimShade: '#7a5a28',
+    pants: '#2a2418', pantsShade: '#16120a', boots: '#241a10', bootsShade: '#120c06',
+    eyes: '#ffd060', body: 'robe', headwear: 'hood', width: 1.15, weapon: 'lantern',
   },
   // Die Chronisten von Ingopolis
   matthias: {
@@ -785,8 +872,19 @@ function drawArm(ctx, arm, c, sz, back, rig, pose) {
     // Puffärmel oben, eng am Unterarm
     celLimb(ctx, arm.sh, arm.elbow, 4.6 * sz, 3.2 * sz, sb, ss, back ? null : c.coatL);
     celLimb(ctx, arm.elbow, arm.hand, 3.0 * sz, 2.5 * sz, sb, ss);
-    // Goldene Schulterpasse
-    if (!back) {
+    // Schulterplatte aus Metall (Rüstung) …
+    if (!back && c.plates) {
+      const pp = smoothPath([
+        P(arm.sh.x - 2.6 * sz, arm.sh.y - 0.4 * sz), P(arm.sh.x + 0.6 * sz, arm.sh.y - 2.6 * sz, true), P(arm.sh.x + 3.6 * sz, arm.sh.y - 0.6 * sz),
+        P(arm.sh.x + 3.2 * sz, arm.sh.y + 2.6 * sz, true), P(arm.sh.x - 1.8 * sz, arm.sh.y + 2.9 * sz, true),
+      ]);
+      cel(ctx, pp, c.plate, c.plateShade, 0.7, -0.7, c.plateL);
+      ctx.strokeStyle = c.trim; ctx.lineWidth = 0.45 * sz;
+      ctx.beginPath(); ctx.moveTo(arm.sh.x - 1.6 * sz, arm.sh.y + 1.9 * sz); ctx.lineTo(arm.sh.x + 2.8 * sz, arm.sh.y + 1.7 * sz); ctx.stroke();
+      ctx.fillStyle = c.trim;
+      ctx.beginPath(); ctx.arc(arm.sh.x + 0.6 * sz, arm.sh.y + 0.2 * sz, 0.5 * sz, 0, TAU); ctx.fill();
+    } else if (!back) {
+      // … oder die goldene Schulterpasse des Fürstenmantels
       const pp = new Path2D();
       pp.ellipse(arm.sh.x + 0.4 * sz, arm.sh.y + 0.6 * sz, 3.0 * sz, 2.1 * sz, 0.3, 0, TAU);
       cel(ctx, pp, c.coat, c.coatShade, 0.6, -0.6);
@@ -912,6 +1010,21 @@ function drawBody(ctx, rig, pose, c, sz, w, extra) {
     const swing = (pose.hipB - pose.hipF) * 1.4;
     const tail = smoothPath([P(e0.x, e0.y), P(e0.x - 1.6 * sz + swing, e0.y + 5 * sz), P(e0.x - 0.6 * sz + swing, e0.y + 7.5 * sz, true), P(e0.x + 1.2 * sz, e0.y + 0.4 * sz)]);
     cel(ctx, tail, c.lining, c.liningShade, 0.4, -0.4);
+    // Brustpanzer über dem Mantel (Rüstung)
+    if (c.plates) {
+      const plate = smoothPath([
+        along(shoulder, ax, -sw * 0.55, -0.6 * sz), along(shoulder, ax, sw * 0.95, -0.5 * sz),
+        along(shoulder, ax, sw * 0.9, -5.2 * sz), { ...along(hip, ax, hw * 0.6, 5.6 * sz), sharp: true },
+        { ...along(hip, ax, -hw * 0.5, 5.4 * sz), sharp: true }, along(shoulder, ax, -sw * 0.6, -5.0 * sz),
+      ]);
+      cel(ctx, plate, c.plate, c.plateShade, 1.0 * sz, -0.8 * sz, c.plateL);
+      const r0 = along(shoulder, ax, sw * 0.3, -0.8 * sz), r1 = along(hip, ax, hw * 0.1, 5.4 * sz);
+      ctx.strokeStyle = c.plateL || '#fff'; ctx.lineWidth = 0.4 * sz;
+      ctx.beginPath(); ctx.moveTo(r0.x, r0.y); ctx.lineTo(r1.x, r1.y); ctx.stroke();
+      ctx.strokeStyle = c.trim; ctx.lineWidth = 0.5 * sz;
+      const e0 = along(hip, ax, -hw * 0.5, 5.4 * sz), e1 = along(hip, ax, hw * 0.6, 5.6 * sz);
+      ctx.beginPath(); ctx.moveTo(e0.x, e0.y); ctx.lineTo(e1.x, e1.y); ctx.stroke();
+    }
     // Gürtelschnalle
     const bk = along(hip, ax, hw * 0.35, 1.0 * sz);
     ctx.fillStyle = c.trim;
@@ -1462,6 +1575,11 @@ function drawWeapon(ctx, arm, c, pose, sz, extra) {
   ctx.save();
   ctx.translate(h.x, h.y);
   switch (c.weapon) {
+    case 'lordsword': {
+      ctx.restore();
+      drawLordBlade(ctx, h.x, h.y, pose.bladeA ?? (-a + Math.PI / 2), extra.blade || WEAPONS.blutklinge, sz);
+      return;
+    }
     case 'stake': {
       ctx.rotate(-a + Math.PI * 0.55);
       const p = new Path2D(); p.rect(-1.0 * sz, -2 * sz, 2.0 * sz, 11 * sz); p.moveTo(-1.0 * sz, 9 * sz); p.lineTo(0, 12.5 * sz); p.lineTo(1.0 * sz, 9 * sz);
@@ -1577,6 +1695,88 @@ function drawWeapon(ctx, arm, c, pose, sz, extra) {
     }
     default: break;
   }
+  ctx.restore();
+}
+
+/**
+ * Die Klinge des Fürsten, je nach Waffe anders geformt. (hx, hy) ist die Hand,
+ * `ang` der Klingenwinkel im Figurenraum. Griff liegt in der Hand, Parierstange
+ * direkt davor, dann die Klinge.
+ */
+export function drawLordBlade(ctx, hx, hy, ang, w, sz) {
+  const L = w.len * sz, W = w.width * sz;
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(ang);
+  const style = w.style;
+  // Griff mit Knauf (hinter der Hand)
+  const grip = style === 'greatsword' ? 5 : style === 'scythe' ? 7 : 3;
+  ctx.fillStyle = '#2a1a22';
+  ctx.fillRect(-grip * sz, -0.6 * sz, (grip + 1) * sz, 1.2 * sz);
+  if (style !== 'scythe') {
+    const pom = new Path2D(); pom.arc(-grip * sz - 0.6 * sz, 0, 1.0 * sz, 0, TAU);
+    cel(ctx, pom, w.guard, shadeColor(w.guard, 0.55), 0.3, -0.3);
+  }
+  // Parierstange
+  if (style === 'saber') {
+    const bow = new Path2D();
+    bow.moveTo(0.4 * sz, -2.4 * sz); bow.quadraticCurveTo(-3 * sz, 3 * sz, -grip * sz, 1.2 * sz);
+    ctx.strokeStyle = w.guard; ctx.lineWidth = 0.7 * sz; ctx.stroke(bow);
+    const g = new Path2D(); g.rect(0, -2.4 * sz, 1.2 * sz, 4.8 * sz);
+    cel(ctx, g, w.guard, shadeColor(w.guard, 0.55), 0.3, -0.3);
+  } else if (style !== 'scythe') {
+    const span = style === 'greatsword' ? 4.6 : style === 'dagger' ? 2.4 : 3.4;
+    const g = smoothPath([
+      P(0, -span * sz, true), P(1.3 * sz, -span * sz + 0.6 * sz, true), P(1.3 * sz, span * sz - 0.6 * sz, true), P(0, span * sz, true),
+      P(-0.4 * sz, span * sz * 0.4), P(-0.4 * sz, -span * sz * 0.4),
+    ]);
+    cel(ctx, g, w.guard, shadeColor(w.guard, 0.55), 0.3, -0.3, shadeColor(w.guard, 1.35));
+  }
+  // Klinge
+  const b = new Path2D();
+  const x0 = 1.2 * sz;
+  if (style === 'saber' || style === 'scimitar') {
+    // Gekrümmte Klinge: Schneide unten, Rücken oben
+    const bulge = style === 'scimitar' ? 1.6 : 1.0;
+    b.moveTo(x0, -W * 0.5);
+    b.quadraticCurveTo(L * 0.6, -W * 0.7 + L * 0.02, L, W * 0.4 + 1.6 * sz);
+    b.lineTo(L - 1.6 * sz, W * 0.9 + 1.2 * sz);
+    b.quadraticCurveTo(L * 0.62, W * bulge + 0.9 * sz, x0, W * 0.5);
+    b.closePath();
+  } else if (style === 'scythe') {
+    // Stiel und ein weit geschwungenes Sensenblatt an der Spitze
+    b.rect(x0 - 2 * sz, -0.55 * sz, L - x0 + 2 * sz, 1.1 * sz);
+    ctx.fillStyle = '#3a2430';
+    ctx.fill(b);
+    const s2 = new Path2D();
+    s2.moveTo(L, -1.2 * sz);
+    s2.quadraticCurveTo(L - 2 * sz, 9 * sz, L - 12 * sz, 11 * sz);
+    s2.quadraticCurveTo(L - 3.5 * sz, 6.5 * sz, L - 1.2 * sz, 1.2 * sz);
+    s2.closePath();
+    cel(ctx, s2, w.blade, w.bladeShade, 0.4, -0.5, '#ffffff');
+    ctx.strokeStyle = w.edge; ctx.lineWidth = 0.35 * sz;
+    ctx.beginPath(); ctx.moveTo(L - 1.2 * sz, 1.2 * sz); ctx.quadraticCurveTo(L - 3.5 * sz, 6.5 * sz, L - 12 * sz, 11 * sz); ctx.stroke();
+    ctx.restore();
+    return;
+  } else {
+    // Gerade Klinge, zweischneidig, mit Spitze
+    const tip = style === 'dagger' ? 2.2 : 2.8;
+    b.moveTo(x0, -W * 0.5);
+    b.lineTo(L - tip * sz, -W * 0.38);
+    b.lineTo(L, 0);
+    b.lineTo(L - tip * sz, W * 0.38);
+    b.lineTo(x0, W * 0.5);
+    b.closePath();
+  }
+  cel(ctx, b, w.blade, w.bladeShade, 0, -0.45, '#ffffff');
+  // Hohlkehle und rote Schneide
+  ctx.strokeStyle = 'rgba(70,60,90,0.55)'; ctx.lineWidth = 0.3 * sz;
+  ctx.beginPath(); ctx.moveTo(x0 + 0.8 * sz, 0); ctx.lineTo(L * 0.72, 0); ctx.stroke();
+  ctx.strokeStyle = w.edge; ctx.lineWidth = 0.3 * sz;
+  ctx.beginPath(); ctx.moveTo(x0 + 0.5 * sz, W * 0.46); ctx.lineTo(L - 1.5 * sz, W * 0.3); ctx.stroke();
+  // Edelstein in der Parierstange
+  ctx.fillStyle = w.gem;
+  ctx.beginPath(); ctx.arc(0.6 * sz, 0, 0.6 * sz, 0, TAU); ctx.fill();
   ctx.restore();
 }
 

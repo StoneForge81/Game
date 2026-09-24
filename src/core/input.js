@@ -7,6 +7,7 @@ export const ACTIONS = [
   'left', 'right', 'up', 'down',
   'jump', 'attack', 'lance', 'dash', 'drain',
   'batForm', 'wolfClaw',
+  'quickItem', 'spellNext', 'spellPrev', 'inventory',
   'menu', 'map', 'confirm', 'cancel',
 ];
 
@@ -23,6 +24,10 @@ const DEFAULT_KEYS = {
   drain: ['KeyE', 'KeyF'],
   batForm: [],
   wolfClaw: ['KeyQ', 'KeyR'],
+  quickItem: ['KeyH', 'Digit1'],
+  spellNext: ['KeyT', 'Digit2'],
+  spellPrev: ['KeyG'],
+  inventory: ['KeyI'],
   menu: ['Escape', 'KeyP'],
   map: ['Tab', 'KeyM'],
   confirm: ['Enter', 'Space', 'KeyJ'],
@@ -41,6 +46,12 @@ const DEFAULT_PADS = {
   batForm: [],
   // Wolfsklaue auf beiden linken Schultertasten – je nachdem, was dem Daumen näher liegt.
   wolfClaw: [4, 6],
+  // Steuerkreuz hoch: Schnelltrank. Rechter Stick: Zauber wechseln (kippen oder drücken).
+  // Linken Stick drücken: Inventar.
+  quickItem: [12],
+  spellNext: [11],
+  spellPrev: [],
+  inventory: [10],
   menu: [9],
   map: [8],
   confirm: [0],
@@ -144,6 +155,13 @@ export class Input {
       this.state[a] = on;
     }
 
+    // Rechten Stick zur Seite kippen wechselt den Zauber.
+    if (pad) {
+      const rx = pad.axes[2] ?? 0;
+      if (rx > 0.6) { this.state.spellNext = true; padActive = true; }
+      if (rx < -0.6) { this.state.spellPrev = true; padActive = true; }
+    }
+
     // Stick-Richtung zusätzlich auf die Richtungsaktionen legen.
     if (padAxisX < -0.5) this.state.left = true;
     if (padAxisX > 0.5) this.state.right = true;
@@ -237,11 +255,11 @@ function detectPadType(id = '') {
 
 // Tastensymbole fürs HUD, je nach erkanntem Gerät.
 const GLYPHS = {
-  xbox:        { jump: 'A', attack: 'X', lance: 'Y', dash: 'RB', drain: 'B', wolfClaw: 'LB', menu: '☰', map: '⧉', confirm: 'A', cancel: 'B' },
-  playstation: { jump: '✕', attack: '□', lance: '△', dash: 'R1', drain: '○', wolfClaw: 'L1', menu: 'Options', map: 'Share', confirm: '✕', cancel: '○' },
-  nintendo:    { jump: 'B', attack: 'Y', lance: 'X', dash: 'R', drain: 'A', wolfClaw: 'L', menu: '+', map: '−', confirm: 'B', cancel: 'A' },
-  generic:     { jump: '1', attack: '3', lance: '4', dash: 'R1', drain: '2', wolfClaw: 'L1', menu: 'Start', map: 'Select', confirm: '1', cancel: '2' },
-  keyboard:    { jump: 'Leer', attack: 'J', lance: 'L', dash: 'Shift', drain: 'E', wolfClaw: 'Q', menu: 'Esc', map: 'Tab', confirm: 'Enter', cancel: 'Esc' },
+  xbox:        { jump: 'A', attack: 'X', lance: 'Y', dash: 'RB', drain: 'B', wolfClaw: 'LB', quickItem: '↑', spellNext: 'RS', inventory: 'LS', menu: '☰', map: '⧉', confirm: 'A', cancel: 'B' },
+  playstation: { jump: '✕', attack: '□', lance: '△', dash: 'R1', drain: '○', wolfClaw: 'L1', quickItem: '↑', spellNext: 'R3', inventory: 'L3', menu: 'Options', map: 'Share', confirm: '✕', cancel: '○' },
+  nintendo:    { jump: 'B', attack: 'Y', lance: 'X', dash: 'R', drain: 'A', wolfClaw: 'L', quickItem: '↑', spellNext: 'RS', inventory: 'LS', menu: '+', map: '−', confirm: 'B', cancel: 'A' },
+  generic:     { jump: '1', attack: '3', lance: '4', dash: 'R1', drain: '2', wolfClaw: 'L1', quickItem: '↑', spellNext: 'R3', inventory: 'L3', menu: 'Start', map: 'Select', confirm: '1', cancel: '2' },
+  keyboard:    { jump: 'Leer', attack: 'J', lance: 'L', dash: 'Shift', drain: 'E', wolfClaw: 'Q', quickItem: 'H', spellNext: 'T', inventory: 'I', menu: 'Esc', map: 'Tab', confirm: 'Enter', cancel: 'Esc' },
 };
 
 export function glyph(input, action) {
