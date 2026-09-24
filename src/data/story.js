@@ -24,6 +24,7 @@ export const SPEAKERS = {
   prisoner:   { name: 'Gefangener',                color: '#d8c0a8', side: 'right' },
   ines:       { name: 'Ines',                      color: '#c8b8e8', side: 'right' },
   matthias:   { name: 'Matthias',                  color: '#e8d090', side: 'right' },
+  mortimer:   { name: 'Mortimer, der Händler',     color: '#c8d890', side: 'right' },
   ambrosius:  { name: 'Bruder Ambrosius',          color: '#f0c860', side: 'right' },
   mirella:    { name: 'Schwester Mirella',         color: '#90c8ff', side: 'right' },
   isolde:     { name: 'Isolde von Hagen',          color: '#ff9a5a', side: 'right' },
@@ -213,6 +214,24 @@ export const SCENES = {
     { who: 'renate', text: 'Er ist unser Enkel. Und jetzt trink was, du bist ja nur noch Haut und Knochen.' },
   ],
 
+  // --- Mortimer, der fahrende Händler --------------------------------------------
+  'merchant.first': [
+    { who: 'mortimer', text: 'Kundschaft! Und was für welche – der Fürst persönlich, frisch aus dem Sarg!' },
+    { who: 'ingomar', text: 'Ein Ghul mit einem Karren. In meinem Schloss.' },
+    { who: 'mortimer', text: 'Mortimer, zu Diensten. Dreihundert Jahre lang hatte ich keine Kundschaft. Die Jäger zahlen schlecht und kaufen nie Heiltränke.' },
+    { who: 'mortimer', text: 'Tränke, Klingen, Rüstungen, Ringe, Zauberbücher. Bezahlt wird in Gold – die Jäger tragen reichlich davon bei sich.' },
+    { who: 'henry', text: 'Vater, der riecht komisch.' },
+    { who: 'mortimer', text: 'Das ist Moder, junger Herr. Edler Moder. Ich ziehe mit meinem Karren immer eine Etage weiter – Ihr findet mich in jedem Teil des Schlosses.' },
+  ],
+  'merchant.greet': [
+    { who: 'mortimer', text: 'Ah, Durchlaucht! Frische Ware, kaum benutzt.' },
+    { who: 'mortimer', text: 'Gold gegen Glück. Oder wenigstens gegen Heiltränke.' },
+    { who: 'mortimer', text: 'Wieder da? Das Schloss ist gefährlich. Gut fürs Geschäft.' },
+    { who: 'mortimer', text: 'Pssst. Ich habe da etwas Neues im Karren.' },
+    { who: 'mortimer', text: 'Für Euch mache ich einen Sonderpreis. Den gleichen wie immer.' },
+    { who: 'mortimer', text: 'Mein Karren quietscht. Ich nicht. Ich schweige wie ein Grab.' },
+  ],
+
   // --- Gefangene aus Ingopolis -------------------------------------------------
   'prisoner.1': [
     { who: 'prisoner', text: 'Herr … Fürst Ingomar? Ihr seid es wirklich?' },
@@ -256,6 +275,9 @@ export const HINTS = {
   'hint.checkpoint': 'Ein Sarg! Da wartet Oma Renate. Drück {drain} zum Ausruhen.',
   'hint.knight': 'Der Ritter blockt von vorn! Spring hinter ihn – oder nimm die Lanze!',
   'hint.lowBlood': 'Dein Blut ist fast leer. Trink aus einem Gegner, der in die Knie geht!',
+  'hint.potion': 'Du blutest ja! Trink einen Heiltrank mit {quickItem}!',
+  'hint.merchant': 'Mortimers Karren! Mit dem Gold der Jäger kannst du bei ihm einkaufen.',
+  'hint.inventory': 'Neue Sachen? Mit {inventory} oder im Pausenmenü kannst du alles anlegen.',
   'hint.secret': 'Hier stimmt was nicht … Hinter dieser Wand ist etwas!',
   'hint.archivists': 'Da versteckt sich jemand hinter den Regalen … Menschen! Sprich sie an, Vater. Mit {drain}.',
 };

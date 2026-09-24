@@ -203,7 +203,7 @@ class Boss extends Entity {
   takeHit(game, attack) {
     if (!this.hurtable || this.state !== 'fight') return false;
     let dmg = attack.damage, crit = !!attack.crit;
-    if (attack.team === 'player' && attack.source) { const r = rollDamage(attack.damage, game.player.power); dmg = r.dmg; crit = r.crit; }
+    if (attack.team === 'player' && attack.source) { const r = rollDamage(attack.damage, game.player.power, attack.critChance ?? 0.08); dmg = r.dmg; crit = r.crit; }
     dmg = Math.round(dmg * this.armor);
     this.hp -= dmg;
     this.flash = 1;

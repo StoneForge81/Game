@@ -22,7 +22,7 @@ const CHOICES = {
 
 const PORTRAIT_COSTUME = {
   ingomar: 'ingomar', henry: 'henry', yvonne: 'yvonne', renate: 'renate', egon: 'egon', prisoner: 'prisoner',
-  ines: 'ines', matthias: 'matthias',
+  ines: 'ines', matthias: 'matthias', mortimer: 'mortimer',
   ambrosius: 'ambrosius', mirella: 'mirella', isolde: 'isolde', malachias: 'malachias', cogliostro: 'cogliostro', serafine: 'serafine',
 };
 
@@ -159,7 +159,7 @@ export class Dialogue {
       cape.reset(ax, ay);
       for (let i = 0; i < 90; i++) cape.update(1 / 60, ax, ay, 0, -60 * facing);
     }
-    drawHumanoid(ctx, 0, 0, facing, pose, costume, { sz, cape, outline: 0.45 });
+    drawHumanoid(ctx, 0, 0, facing, pose, costume, { sz, cape, outline: 0.45, noWeapon: key === 'ingomar' });
     ctx.restore();
     // Kristallschimmer für Yvonnes Stimme
     if (who === 'yvonne') {

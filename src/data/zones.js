@@ -33,7 +33,7 @@ export const ZONES = {
     reward: 'lance',
     height: 46,
     beats: [
-      'awaken', 'corridor', 'tutorialJump', 'corridor', 'lore', 'pit', 'checkpoint',
+      'awaken', 'corridor', 'tutorialJump', 'corridor', 'lore', 'pit', 'checkpoint', 'merchant',
       'stairsUp', 'corridor', 'prisoner', 'holyIntro', 'corridor', 'tower', 'arena',
       'secretBreakable', 'checkpoint', 'bossGate', 'boss', 'exit',
     ],
@@ -61,7 +61,7 @@ export const ZONES = {
     reward: 'mist',
     height: 50,
     beats: [
-      'arrive', 'corridor', 'water', 'corridor', 'checkpoint', 'pit', 'lore',
+      'arrive', 'corridor', 'water', 'corridor', 'checkpoint', 'merchant', 'pit', 'lore',
       'stairsDown', 'water', 'prisoner', 'holyCorridor', 'tower', 'arena', 'checkpoint',
       'secretBat', 'corridor', 'bossGate', 'boss', 'exit',
     ],
@@ -92,7 +92,7 @@ export const ZONES = {
     reward: 'bat',
     height: 48,
     beats: [
-      'arrive', 'corridor', 'rooftops', 'checkpoint', 'corridor', 'pit', 'lore',
+      'arrive', 'corridor', 'rooftops', 'checkpoint', 'merchant', 'corridor', 'pit', 'lore',
       'holyCorridor', 'prisoner', 'rooftops', 'arena', 'checkpoint', 'secretMist',
       'stairsUp', 'corridor', 'bossGate', 'boss', 'exit',
     ],
@@ -120,7 +120,7 @@ export const ZONES = {
     reward: 'wolf',
     height: 58,
     beats: [
-      'arrive', 'corridor', 'tower', 'lore', 'archivists', 'checkpoint', 'batGap', 'corridor',
+      'arrive', 'corridor', 'tower', 'lore', 'archivists', 'checkpoint', 'merchant', 'batGap', 'corridor',
       'prisoner', 'holyCorridor', 'tower', 'mistGate', 'arena', 'checkpoint',
       'lore', 'corridor', 'bossGate', 'boss', 'exit',
     ],
@@ -148,7 +148,7 @@ export const ZONES = {
     reward: 'moonskin',
     height: 64,
     beats: [
-      'arrive', 'tower', 'corridor', 'checkpoint', 'batGap', 'holyCorridor',
+      'arrive', 'tower', 'corridor', 'checkpoint', 'merchant', 'batGap', 'holyCorridor',
       'wolfGate', 'lore', 'prisoner', 'tower', 'arena', 'checkpoint',
       'holyCorridor', 'tower', 'bossGate', 'boss', 'exit',
     ],
@@ -177,7 +177,7 @@ export const ZONES = {
     reward: null,
     height: 56,
     beats: [
-      'arrive', 'holyCorridor', 'corridor', 'checkpoint', 'lore', 'tower',
+      'arrive', 'holyCorridor', 'corridor', 'checkpoint', 'merchant', 'lore', 'tower',
       'prisoner', 'holyCorridor', 'arena', 'checkpoint', 'corridor',
       'holyCorridor', 'bossGate', 'boss', 'throne',
     ],

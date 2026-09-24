@@ -4,6 +4,7 @@
 import { Entity } from './entity.js';
 import { TAU, clamp, damp, dist } from '../core/math.js';
 import { drawHumanoid, makePose, COSTUMES, outlined, cel, smoothPath, P } from '../render/puppet.js';
+import { CONSUMABLES } from '../data/gear.js';
 
 // === Basisklasse für Interaktionen =========================================
 
@@ -84,6 +85,98 @@ export function drawCoffin(ctx, x, y, open, glow = 0) {
     const base = new Path2D(); base.rect(x - 19, y - 3, 38, 3);
     cel(c, base, '#4a3a40', '#2a2024', 0.3, -0.3);
   }, { box: 60, footAt: 0.8 });
+}
+
+// === Mortimer, der fahrende Händler ========================================
+
+export class Merchant extends Interactable {
+  constructor(def) {
+    super(def.x, def.y, 20, 30);
+    this.prompt = 'Handeln';
+    this.range = 40;
+    this.pose = makePose('idle', 0);
+    this.facing = -1;
+    this.glow = 0;
+  }
+  interact(game) { game.openShop(this); }
+  update(dt, game) {
+    super.update(dt, game);
+    const p = game.player;
+    this.facing = p.x < this.x ? -1 : 1;
+    // Wiegt sich leise, reibt sich die Hände, wenn man näher kommt
+    const near = this.canInteract(p);
+    this.glow = damp(this.glow, near ? 1 : 0, 0.15, dt);
+    this.pose = makePose(near ? 'pray' : 'idle', this.age * (near ? 1.4 : 0.9));
+    this.pose.lean = 0.35;
+    this.pose.crouch = 0.12;
+  }
+  draw(ctx, game) {
+    drawCart(ctx, this.x + 34, this.y, this.age);
+    // Rucksack voller Kram
+    outlined(ctx, this.x, this.y, 1, (c) => {
+      const bx = this.x - this.facing * 7, by = this.y - 22;
+      const pack = smoothPath([P(bx - 6, by - 8, true), P(bx + 6, by - 9, true), P(bx + 7, by + 7, true), P(bx - 6, by + 8, true)]);
+      cel(c, pack, '#6a4a2a', '#3a2814', 0.5, -0.4, '#9a7448');
+      c.fillStyle = '#b8c0d0'; c.fillRect(bx - 4, by - 12, 2, 5);
+      c.fillStyle = '#e8304a'; c.fillRect(bx + 1, by - 11, 2.4, 3.4);
+    }, { box: 70, footAt: 0.8 });
+    drawHumanoid(ctx, this.x, this.y, this.facing, this.pose, COSTUMES.mortimer, { sz: 0.92, t: this.age });
+  }
+  drawEmissive(ctx, game, isGlow) {
+    // Laterne und Glimmen der Tränke auf dem Karren
+    const k = 0.7 + 0.3 * Math.sin(this.age * 3);
+    ctx.fillStyle = isGlow ? `rgba(255,200,90,${0.8 * k})` : '#ffe0a0';
+    ctx.beginPath(); ctx.arc(this.x + this.facing * 7, this.y - 14, isGlow ? 7 : 1.5, 0, TAU); ctx.fill();
+    const cols = ['#ff3050', '#b040ff', '#ff8a20', '#50c0ff'];
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = cols[i];
+      ctx.globalAlpha = isGlow ? 0.5 * k : 0.9;
+      ctx.beginPath(); ctx.arc(this.x + 22 + i * 7, this.y - 19, isGlow ? 4 : 1.2, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (this.glow > 0.05 && !isGlow) {
+      // Münzsymbol über dem Kopf, wenn man nah ist
+      ctx.globalAlpha = this.glow;
+      ctx.fillStyle = '#ffd860';
+      ctx.beginPath(); ctx.arc(this.x, this.y - 44 - Math.sin(this.age * 3) * 2, 2.4, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  light() { return { x: this.x + 14, y: this.y - 16, radius: 110, color: 'rgb(255,200,120)', intensity: 1.0 }; }
+}
+
+/** Mortimers Handkarren mit Plane, Kisten und Flaschen. */
+function drawCart(ctx, x, y, t) {
+  outlined(ctx, x, y, 1, (c) => {
+    // Räder
+    for (const wx of [x - 12, x + 12]) {
+      const wh = new Path2D(); wh.arc(wx, y - 5, 5, 0, TAU);
+      cel(c, wh, '#5a3a20', '#2a1a0c', 0.3, -0.3);
+      c.strokeStyle = '#2a1a0c'; c.lineWidth = 0.6;
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(wx - Math.cos(a) * 4.5, y - 5 - Math.sin(a) * 4.5); c.lineTo(wx + Math.cos(a) * 4.5, y - 5 + Math.sin(a) * 4.5); c.stroke(); }
+    }
+    // Kasten
+    const box = new Path2D(); box.rect(x - 17, y - 16, 34, 9);
+    cel(c, box, '#7a5230', '#452c16', 0.4, -0.4, '#a87848');
+    c.fillStyle = '#3a2412'; for (let i = -12; i <= 12; i += 8) c.fillRect(x + i, y - 16, 0.8, 9);
+    // Flaschen
+    const cols = ['#e8304a', '#9a1040', '#ff8a30', '#6a9aff'];
+    for (let i = 0; i < 4; i++) {
+      const bx = x - 12 + i * 7;
+      const b = smoothPath([P(bx - 2, y - 16, true), P(bx + 2, y - 16, true), P(bx + 2, y - 20), P(bx + 0.8, y - 22), P(bx + 0.8, y - 24, true), P(bx - 0.8, y - 24, true), P(bx - 0.8, y - 22), P(bx - 2, y - 20)]);
+      cel(c, b, cols[i], '#200810', 0.3, -0.3, '#ffffff');
+    }
+    // Plane auf zwei Stangen
+    c.fillStyle = '#3a2412'; c.fillRect(x - 17, y - 34, 1.2, 18); c.fillRect(x + 16, y - 34, 1.2, 18);
+    const tarp = smoothPath([P(x - 20, y - 32, true), P(x, y - 38), P(x + 20, y - 32, true), P(x + 18, y - 29), P(x, y - 33), P(x - 18, y - 29)]);
+    cel(c, tarp, '#6a2a3a', '#3a121e', 0.5, -0.4, '#9a4a5a');
+    c.fillStyle = '#e8c060';
+    for (let i = -16; i <= 16; i += 4) c.fillRect(x + i, y - 30 - (1 - Math.abs(i) / 20) * 4, 1, 1.4);
+    // Deichsel
+    c.strokeStyle = '#4a2e18'; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(x + 17, y - 9); c.lineTo(x + 27, y - 3); c.stroke();
+  }, { box: 80, footAt: 0.75 });
+  void t;
 }
 
 // === Offener Sarg am Spielanfang ===========================================
@@ -231,24 +324,29 @@ export class Pickup extends Entity {
     this.itemId = opts.id || null;
     this.ability = opts.ability || null;
     this.heal = opts.heal ?? 3;         // nur Blutkugeln
-    this.solid = kind === 'bloodOrb';
-    this.gravity = kind === 'bloodOrb' ? 600 : 0;
+    this.value = opts.value ?? 1;       // nur Münzen
+    this.item = opts.item || null;      // nur Tränke
+    const loose = kind === 'bloodOrb' || kind === 'coin' || kind === 'potion';
+    this.loose = loose;
+    this.solid = loose;
+    this.gravity = loose ? 600 : 0;
     this.vx = opts.vx ?? 0;
     this.vy = opts.vy ?? 0;
     this.baseY = y;
-    this.collectDelay = kind === 'bloodOrb' ? 0.35 : 0.2;
-    this.life = kind === 'bloodOrb' ? 12 : Infinity;
+    this.collectDelay = loose ? 0.35 : 0.2;
+    this.life = kind === 'bloodOrb' ? 12 : kind === 'coin' ? 20 : kind === 'potion' ? 30 : Infinity;
   }
   update(dt, game) {
     super.update(dt, game);
     const p = game.player;
-    if (this.kind === 'bloodOrb') {
+    if (this.loose) {
       this.physics(dt, game.world);
       this.vx *= 0.96;
-      // Blut zieht es zum Vampir
+      // Blut und Gold zieht es zum Vampir
+      const reach = this.kind === 'coin' ? 80 : 60;
       const d = dist(this.x, this.y - 5, p.x, p.y - 15);
-      if (this.age > this.collectDelay && d < 60) {
-        const k = 1 - d / 60;
+      if (this.age > this.collectDelay && d < reach) {
+        const k = 1 - d / reach;
         this.x += (p.x - this.x) * k * 8 * dt;
         this.y += (p.y - 15 - this.y) * k * 8 * dt;
       }
@@ -282,6 +380,30 @@ export class Pickup extends Entity {
   }
   drawEmissive(ctx, game, isGlow) {
     const t = this.age;
+    // Kurz vor dem Verschwinden blinken
+    if (this.loose && this.life - this.age < 3 && Math.floor(this.age * 10) % 2) return;
+    if (this.kind === 'coin') {
+      // Goldmünze, die sich dreht
+      const w = Math.abs(Math.cos(t * 6 + this.x)) * 2.4 + 0.4;
+      const big = this.value >= 10;
+      ctx.fillStyle = isGlow ? 'rgba(255,210,90,0.7)' : big ? '#ffe070' : '#f0c040';
+      ctx.beginPath(); ctx.ellipse(this.x, this.y - 3, isGlow ? 5 : w * (big ? 1.3 : 1), isGlow ? 5 : 2.6 * (big ? 1.3 : 1), 0, 0, TAU); ctx.fill();
+      if (!isGlow) { ctx.fillStyle = '#fff6c0'; ctx.fillRect(this.x - 0.3, this.y - 4.6, 0.6, 1.4); }
+      return;
+    }
+    if (this.kind === 'potion') {
+      const it = CONSUMABLES[this.item];
+      const col = it ? it.color : '#e8304a';
+      ctx.fillStyle = isGlow ? col : '#f0e8f0';
+      ctx.globalAlpha = isGlow ? 0.6 : 1;
+      ctx.beginPath(); ctx.arc(this.x, this.y - 4, isGlow ? 7 : 3, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+      if (!isGlow) {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(this.x, this.y - 3.6, 2.4, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#8a6a4a'; ctx.fillRect(this.x - 0.9, this.y - 9, 1.8, 2.4);
+      }
+      return;
+    }
     if (this.kind === 'bloodOrb') {
       ctx.fillStyle = isGlow ? 'rgba(255,30,60,0.8)' : '#ff4a60';
       ctx.beginPath(); ctx.arc(this.x, this.y - 4, isGlow ? 6 : 2.4, 0, TAU); ctx.fill();
@@ -317,7 +439,8 @@ export class Pickup extends Entity {
     }
   }
   light() {
-    if (this.kind === 'bloodOrb') return null;
+    if (this.kind === 'bloodOrb' || this.kind === 'coin') return null;
+    if (this.kind === 'potion') return { x: this.x, y: this.y - 4, radius: 40, color: 'rgb(255,120,150)', intensity: 0.7 };
     return { x: this.x, y: this.y, radius: this.kind === 'ability' ? 130 : 70, color: this.kind === 'chalice' ? 'rgb(255,200,110)' : 'rgb(255,60,90)', intensity: 1.0 };
   }
 }

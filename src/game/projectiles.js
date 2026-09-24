@@ -42,10 +42,19 @@ export class Projectile {
     // Vorwarnung: nur zeichnen, noch nicht treffen
     if (this.age < this.delay) return;
 
-    if (this.homing && game.player && !game.player.dead) {
-      const target = this.team === 'enemy' ? game.player : null;
+    if (this.homing && game.player && !game.player.dead && this.age > (this.data.seekAfter || 0)) {
+      let target = this.team === 'enemy' ? game.player : null;
+      if (this.team === 'player') {
+        // Zauber des Fürsten suchen sich den nächsten Gegner.
+        let bd = this.data.seekRange || 260;
+        for (const e of game.hurtables()) {
+          const d = Math.hypot(e.x - this.x, e.y - e.h / 2 - this.y);
+          if (d < bd) { bd = d; target = e; }
+        }
+      }
       if (target) {
-        const want = Math.atan2(target.y - 18 - this.y, target.x - this.x);
+        const ty = target === game.player ? target.y - 18 : target.y - target.h / 2;
+        const want = Math.atan2(ty - this.y, target.x - this.x);
         const cur = Math.atan2(this.vy, this.vx);
         const turn = clamp(angleDelta(cur, want), -this.homing * dt, this.homing * dt);
         const a = cur + turn;
@@ -84,7 +93,7 @@ export class Projectile {
     const targets = this.team === 'player' ? game.hurtables() : [game.player];
     const hits = resolveAttack(game, attack, targets);
     if (hits) {
-      if (this.team === 'player') game.player.gainBlood(3 * hits);
+      if (this.team === 'player' && this.kind === 'lance') game.player.gainBlood(3 * hits);
       if (this.pierce > 0) { this.pierce -= hits; this.id = this.kind === 'lance' ? this.id : newAttackId(); }
       else { this._burst(game); this.remove = true; }
     }
@@ -100,6 +109,8 @@ export class Projectile {
       case 'lance': if (Math.random() < 0.6) p.blood(this.x, this.y, Math.PI / 2, 1, 40); break;
       case 'holyOrb': if (Math.random() < 0.5) p.holy(this.x, this.y, 1); break;
       case 'flame': if (Math.random() < 0.8) p.embers(this.x, this.y, '#ffb040', 1, 3); break;
+      case 'hellfire': if (Math.random() < 0.9) p.embers(this.x, this.y, '#ff8a20', 2, 6); break;
+      case 'batSwarm': if (Math.random() < 0.3) p.mist(this.x, this.y, 1, '#3a1030'); break;
       case 'wave': if (Math.random() < 0.7) p.dust(this.x, this.y + this.h / 2, 1, this.data.dust || '#9a9080'); break;
       case 'water': if (Math.random() < 0.7) p.spawn({ kind: 'soft', x: this.x + (Math.random() - 0.5) * this.w, y: this.y - this.h / 2, vx: 0, vy: -40, life: 0.4, size: 2, size1: 5, color: '#a0d0ff', alpha: 0.5 }); break;
       default: break;
@@ -117,6 +128,14 @@ export class Projectile {
       case 'bolt':
         p.sparks(this.x, this.y, '#e8ecff', 8, 180);
         game.audio.play('arrow', { x: this.x, gain: 0.5 });
+        break;
+      case 'hellfire':
+        p.embers(this.x, this.y, '#ffb040', 12, 30);
+        p.ring(this.x, this.y, '#ff8a20', 3, 26, 0.3);
+        game.audio.play('hit', { x: this.x, gain: 0.5 });
+        break;
+      case 'batSwarm':
+        p.bats(this.x, this.y, 2, 0.5);
         break;
       case 'holyOrb':
       case 'lightBlade':
@@ -223,6 +242,38 @@ export class Projectile {
         ctx.restore();
         break;
       }
+      case 'hellfire': {
+        // Feuerball mit flackerndem Schweif
+        for (let i = 1; i < this.trail.length; i++) {
+          const q = this.trail[i];
+          ctx.globalAlpha = (i / this.trail.length) * 0.5;
+          ctx.fillStyle = isGlow ? '#ff6010' : '#ffa040';
+          ctx.beginPath(); ctx.arc(q.x, q.y, (isGlow ? 8 : 3) * (i / this.trail.length), 0, TAU); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        const r = 4 + Math.sin(t * 30 + this.id) * 0.8;
+        ctx.fillStyle = isGlow ? 'rgba(255,120,20,0.95)' : '#ffd070';
+        ctx.beginPath(); ctx.arc(this.x, this.y, isGlow ? r * 2.4 : r, 0, TAU); ctx.fill();
+        if (!isGlow) { ctx.fillStyle = '#fff8e0'; ctx.beginPath(); ctx.arc(this.x, this.y, r * 0.45, 0, TAU); ctx.fill(); }
+        break;
+      }
+      case 'batSwarm': {
+        // Fledermaus aus Blutmagie
+        const flap = Math.sin(t * 28 + this.id * 1.7);
+        const dir = Math.sign(this.vx) || 1;
+        ctx.save(); ctx.translate(this.x, this.y); ctx.scale(dir, 1);
+        ctx.fillStyle = isGlow ? 'rgba(180,80,255,0.8)' : '#2a0a2a';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(-4, -4 - flap * 3, -8, -1 - flap * 2);
+        ctx.quadraticCurveTo(-5, 0, -2, 2);
+        ctx.quadraticCurveTo(2, 0, 5, -1 - flap * 2);
+        ctx.quadraticCurveTo(3, -4 - flap * 3, 0, 0);
+        ctx.fill();
+        if (!isGlow) { ctx.fillStyle = '#ff3050'; ctx.fillRect(1, -0.6, 0.9, 0.9); }
+        ctx.restore();
+        break;
+      }
       case 'flame': {
         ctx.fillStyle = isGlow ? 'rgba(255,150,40,0.9)' : '#ffd070';
         ctx.beginPath(); ctx.arc(this.x, this.y, isGlow ? 9 : 4, 0, TAU); ctx.fill();
@@ -246,6 +297,8 @@ export class Projectile {
       case 'pillar': return this.age < this.delay ? null : { x: this.x, y: this.y, radius: 140, color: 'rgb(255,240,190)', intensity: 1.5 };
       case 'lightBlade': return { x: this.x, y: this.y, radius: 90, color: 'rgb(255,240,190)', intensity: 1.2 };
       case 'flame': return { x: this.x, y: this.y, radius: 60, color: 'rgb(255,160,60)', intensity: 1.0 };
+      case 'hellfire': return { x: this.x, y: this.y, radius: 80, color: 'rgb(255,140,40)', intensity: 1.2 };
+      case 'batSwarm': return { x: this.x, y: this.y, radius: 40, color: 'rgb(190,90,255)', intensity: 0.6 };
       default: return null;
     }
   }
@@ -307,6 +360,14 @@ export class BloodLance extends Projectile {
     super({ kind: 'lance', x, y, vx: dir * 560, vy: 0, w: 24, h: 8, team: 'player', damage: dmg.dmg, crit: dmg.crit, life: 0.9, pierce: 3 });
   }
 }
+
+/** Zauber „Fledermausschwarm“: fliegt erst auseinander, dann auf den nächsten Gegner. */
+export const batSwarm = (x, y, a, dmg, i) =>
+  new Projectile({ kind: 'batSwarm', x, y, vx: Math.cos(a) * 230, vy: Math.sin(a) * 230 - 40, w: 10, h: 8, team: 'player', damage: dmg.dmg, crit: dmg.crit, life: 2.6, homing: 7, onWall: 'die', data: { seekAfter: 0.12 + i * 0.04, seekRange: 300 } });
+
+/** Zauber „Höllenfeuer“: Feuerball, der eine Handvoll Gegner durchschlägt. */
+export const hellfire = (x, y, a, dmg) =>
+  new Projectile({ kind: 'hellfire', x, y, vx: Math.cos(a) * 330, vy: Math.sin(a) * 330, w: 12, h: 12, team: 'player', damage: dmg.dmg, crit: dmg.crit, life: 1.3, pierce: 1, heavy: true });
 
 export const silverBolt = (x, y, tx, ty, speed = 330) => {
   const a = Math.atan2(ty - y, tx - x);

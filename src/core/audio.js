@@ -1165,6 +1165,30 @@ const SFX = {
     a._tone(t, 0.12, 0.13 * g, 'sine', 880, 1320);
     a._tone(t + 0.09, 0.22, 0.13 * g, 'sine', 1320, 1760);
   },
+  // Goldmünze: hell klirrend, leicht verstimmt, damit ein Münzregen nicht monoton ist.
+  coin: (a, t, o) => {
+    const g = o.gain ?? 1;
+    const f = 1900 + a._rng.next() * 500;
+    a._tone(t, 0.08, 0.07 * g, 'triangle', f, f * 1.02);
+    a._tone(t + 0.05, 0.18, 0.06 * g, 'sine', f * 1.5, null);
+  },
+  // Kaufen beim Händler: Münzen auf den Tresen
+  buy: (a, t, o) => {
+    const g = o.gain ?? 1;
+    for (let i = 0; i < 4; i++) {
+      const f = 1600 + a._rng.next() * 900;
+      a._tone(t + i * 0.05, 0.12, 0.06 * g, 'triangle', f, f * 1.01);
+    }
+    a._tone(t + 0.22, 0.3, 0.08 * g, 'sine', 880, 1320);
+  },
+  // Trank trinken: Korken, zwei Schlucke, Aufatmen
+  drink: (a, t, o) => {
+    const g = o.gain ?? 1;
+    a._tone(t, 0.05, 0.12 * g, 'sine', 900, 400);
+    a._noiseBurst(t + 0.1, 0.12, 0.08 * g, 'bandpass', 500, 3, 300);
+    a._noiseBurst(t + 0.26, 0.12, 0.08 * g, 'bandpass', 480, 3, 280);
+    a._tone(t + 0.4, 0.4, 0.07 * g, 'sine', 520, 780);
+  },
   heartShard: (a, t, o) => {
     const g = o.gain ?? 1;
     for (let i = 0; i < 4; i++) {

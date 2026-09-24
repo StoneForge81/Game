@@ -110,6 +110,15 @@ export function newGameState() {
 
     deaths: 0,
     seed: (Math.random() * 0xffffffff) >>> 0,
+
+    // Händler, Inventar und Ausrüstung
+    gold: 0,
+    inventory: { heiltrank: 2 },        // Verbrauchsgüter: id → Anzahl
+    quickItem: 'heiltrank',             // Trank auf der Schnelltaste
+    owned: { weapon: ['blutklinge'], armor: ['fuerstenmantel'], ring: [] },
+    equip: { weapon: 'blutklinge', armor: 'fuerstenmantel', ring: null },
+    spells: [],                         // gekaufte Zauber (die Blutlanze ist eine Kraft)
+    spell: 'lance',                     // ausgewählter Zauber
   };
 }
 
@@ -134,8 +143,18 @@ export function loadSlot(index) {
   try {
     const s = JSON.parse(raw);
     if (!s || s.version !== SAVE_VERSION) return null;
-    // Gegen manipulierte oder beschädigte Stände absichern.
-    return { ...newGameState(), ...s };
+    // Gegen manipulierte oder beschädigte Stände absichern. Ältere Stände
+    // (vor Händler und Inventar) bekommen die neuen Felder mit Startwerten.
+    const fresh = newGameState();
+    const out = { ...fresh, ...s };
+    for (const k of ['inventory', 'owned', 'equip']) {
+      if (!out[k] || typeof out[k] !== 'object') out[k] = fresh[k];
+    }
+    out.owned = { ...fresh.owned, ...out.owned };
+    out.equip = { ...fresh.equip, ...out.equip };
+    if (!Array.isArray(out.spells)) out.spells = [];
+    if (!Number.isFinite(out.gold)) out.gold = 0;
+    return out;
   } catch {
     return null;
   }

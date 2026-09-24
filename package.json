@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "node tools/serve.mjs",
-    "test": "node tools/validate-levels.mjs && node tools/smoke-test.mjs && node tools/systems-test.mjs && node tools/playthrough.mjs",
+    "test": "node tools/validate-levels.mjs && node tools/smoke-test.mjs && node tools/systems-test.mjs && node tools/playthrough.mjs && node tools/gear-test.mjs",
     "validate": "node tools/validate-levels.mjs",
     "screenshots": "node tools/screenshots.mjs",
     "profile": "node tools/profile.mjs",

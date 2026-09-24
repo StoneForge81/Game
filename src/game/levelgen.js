@@ -513,6 +513,17 @@ const BEATS = {
     b.lights.push({ x: b.wx(x0 + 10), y: b.wy(fy) - 30, radius: 130, color: 'rgb(255,200,130)', intensity: 1.1, flicker: 0.2 });
   },
 
+  // Mortimer, der fahrende Händler, mit seinem Karren – gleich nach dem ersten Sarg.
+  merchant(b) {
+    const x0 = b.room(16, 8);
+    const fy = b.groundAt(x0 + 7);
+    b.entities.push({ type: 'merchant', x: b.wx(x0 + 6), y: b.wy(fy) });
+    b.candle(x0 + 2, fy);
+    b.candle(x0 + 14, fy);
+    b.lights.push({ x: b.wx(x0 + 7), y: b.wy(fy) - 30, radius: 150, color: 'rgb(255,200,130)', intensity: 1.1, flicker: 0.15, shadows: true });
+    b.dressWalls(x0, x0 + 16);
+  },
+
   lore(b) {
     const x0 = b.room(14, 9);
     b.lorePoint(x0 + 7);
