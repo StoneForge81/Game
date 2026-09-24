@@ -3,6 +3,7 @@
 import { VIEW_W, VIEW_H, TILE } from '../data/config.js';
 import { ZONES, ZONE_ORDER, ABILITY_INFO } from '../data/zones.js';
 import { SCENES, HINTS, LORE, CHECKPOINT_LINES, ENDINGS, pickEnding, PROLOGUE } from '../data/story.js';
+import { voiceId } from '../core/voice-id.js';
 import { generateZone } from './levelgen.js';
 import { World } from './world.js';
 import { Camera } from './camera.js';
@@ -814,21 +815,31 @@ export class Game {
 
   _updatePrologue(dt) {
     const pr = this.prologue;
+    if (!pr.spoken) { pr.spoken = true; this.audio.playVoice(voiceId('narrator', PROLOGUE[pr.i])); }
     pr.t += dt;
     const input = this.input;
-    const lineDur = 4.2;
-    if (input.pressed('confirm') || input.pressed('attack') || input.pressed('drain') || pr.t > lineDur) {
+    // Jede Tafel steht mindestens 4,2 s – und so lange, bis der Erzähler fertig ist.
+    const rest = this.audio.voiceRemaining();
+    if (rest === Infinity) pr.hold = Math.min(pr.t + 0.1, 12);        // Aufnahme lädt noch
+    else if (rest !== null) pr.hold = pr.t + rest + 0.8;              // spricht – danach kurz Stille
+    const done = pr.t > Math.max(4.2, pr.hold ?? 0);
+    if (input.pressed('confirm') || input.pressed('attack') || input.pressed('drain') || done) {
       pr.i++;
       pr.t = 0;
+      pr.spoken = false;
+      pr.hold = 0;
       if (pr.i === 1) this.audio.play('checkpoint');
       if (pr.i >= PROLOGUE.length) {
         this.prologue = null;
         this.save.storyFlags.prologue = true;
         this.fade = 1;
         this.fadeTo(0);
+        this.audio.stopVoice(1.2);
       }
     }
-    if (input.pressed('menu')) { this.prologue = null; this.save.storyFlags.prologue = true; this.fadeTo(0); }
+    if (this.prologue && input.pressed('menu')) {
+      this.prologue = null; this.save.storyFlags.prologue = true; this.fadeTo(0); this.audio.stopVoice(0.4);
+    }
   }
 
   // === Zeichnen ===============================================================

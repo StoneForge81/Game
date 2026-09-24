@@ -86,6 +86,8 @@ export const DEFAULT_SETTINGS = {
   masterVolume: 0.8,
   musicVolume: 0.55,
   sfxVolume: 0.9,
+  voiceVolume: 1,
+  recordedAudio: true,  // aufgenommene Musik, Effekte und Stimmen (sonst nur erzeugter Klang)
   screenShake: 1,
   bloom: true,
   vignette: true,

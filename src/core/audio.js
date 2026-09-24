@@ -1,13 +1,30 @@
-// Kompletter Klang des Spiels – prozedural mit der Web Audio API erzeugt.
-// Kein einziges Audiofile: Orgel, Cembalo, Chor, Pauken und alle Effekte
-// werden zur Laufzeit synthetisiert. Das lädt sofort und klingt auf jedem
-// Fernseher gleich.
+// Kompletter Klang des Spiels mit der Web Audio API.
 //
-// Signalweg:  Instrumente -> [Hall] -> Musik-Bus -\
-//                                                  >- Master -> Boxen
-//             Effekte     -> [Hall] -> SFX-Bus  --/
+// Zwei Quellen:
+//  1. Aufgenommene Klänge (mit ElevenLabs erzeugt, siehe assets/audio/):
+//     Orchestermusik, Umgebungsgeräusche, Effekte und die Sprecher.
+//  2. Selbst erzeugte Klänge: Orgel, Cembalo, Chor, Pauken und alle Effekte
+//     werden zur Laufzeit synthetisiert. Das lädt sofort und springt immer
+//     ein, wenn eine Datei fehlt, noch lädt oder nicht abspielbar ist.
+//
+// Signalweg:  Musik     -> [Hall] -> Musik-Bus -> Filter -> Ducking -\
+//             Umgebung  -----------> Umgebungs-Bus -------------------\
+//             Effekte   -> [Hall] -> SFX-Bus ---------------------------> Master -> Limiter -> Boxen
+//             Stimmen   -----------> Stimmen-Bus ---------------------/
 
 import { clamp, makeRng } from './math.js';
+import { SampleBank, MusicLoop } from './samples.js';
+
+// Zielpegel der aufgenommenen Klänge (dB, siehe SampleBank.gainFor) –
+// so abgestimmt, dass sie so laut sind wie die erzeugten Klänge.
+const LEVEL = { music: -19, amb: -29, sfx: -22, voice: -14 };
+
+// Lautstärke einzelner Effekte relativ zueinander (1 = normal).
+const SFX_MIX = {
+  step: 0.22, cloak: 0.3, land: 0.6, jump: 0.55, pickup: 0.7, bat: 0.7, arrow: 0.8,
+  swing: 0.75, dash: 0.7, mist: 0.75, drain: 0.8, gear: 0.7, chain: 0.8, heartShard: 0.9,
+  bossRoar: 1.15, thunder: 1.2, explosion: 1.1, death: 1.05, levelUp: 0.9,
+};
 
 const A4 = 440;
 const midiToFreq = (m) => A4 * Math.pow(2, (m - 69) / 12);
@@ -60,6 +77,44 @@ export class AudioEngine {
     this._nextBeat = 0;
     this._listenerX = 0;         // Kameramitte, für Stereo-Position
     this._halfView = 320;
+
+    // Aufgenommene Klänge: das Verzeichnis wird sofort geladen (klein),
+    // die Dateien selbst erst, wenn der Ton entsperrt ist.
+    this.samples = new SampleBank();
+    this._music = null;          // { path, loop, trim } – laufende aufgenommene Musik
+    this._sampleTrack = false;   // true: Sequenzer schweigt, die Aufnahme spielt
+    this._musicToken = 0;
+    this._musicTimer = null;
+    this._musicStopping = false;
+    this._pendingTrack = null;
+    this._lastVariant = new Map();
+    this._voice = null;          // { src, g } – laufende Sprachausgabe
+    this._voiceToken = 0;
+    this._voicePending = false;
+    this.samples.loadManifest().then(() => this._onManifest());
+  }
+
+  /** Aufgenommene Klänge verwenden? (Einstellung „Klang“) */
+  get _useSamples() { return this.settings.recordedAudio !== false; }
+
+  _path(kind, key) { return this._useSamples ? this.samples.paths(kind, key) : null; }
+
+  /** Verzeichnis kam an – laufende Musik/Umgebung auf Aufnahmen umstellen. */
+  _onManifest() {
+    if (!this.ready || !this.samples.manifest) return;
+    this.samples.attach(this.ctx);
+    this._refreshSources();
+  }
+
+  /** Nach Wechsel zwischen aufgenommenem und erzeugtem Klang neu aufbauen. */
+  _refreshSources() {
+    if (!this.ready) return;
+    if (this.track && !this._musicStopping) this._swap(this.track, 2);
+    if (this._ambienceKind) {
+      const k = this._ambienceKind;
+      this._ambienceKind = null;
+      this.setAmbience(k, 1.5);
+    }
   }
 
   /**
@@ -76,7 +131,15 @@ export class AudioEngine {
       this.unlocked = true;
       this.ready = true;
       if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+      this.samples.attach(this.ctx);
       this._startScheduler();
+      // Vor dem Entsperren gewählte Musik/Umgebung jetzt starten.
+      if (this.track) this._swap(this.track, 1.4);
+      if (this._ambienceKind) {
+        const k = this._ambienceKind;
+        this._ambienceKind = null;
+        this.setAmbience(k);
+      }
     } catch {
       // Ohne Audio läuft das Spiel trotzdem – nur still.
       this.ready = false;
@@ -111,7 +174,10 @@ export class AudioEngine {
     this.musicFilter.frequency.value = 20000;
     this.musicFilter.Q.value = 0.7;
     this.musicBus.connect(this.musicFilter);
-    this.musicFilter.connect(this.master);
+    // Ducking: Musik wird leiser, solange jemand spricht.
+    this.musicDuck = ctx.createGain();
+    this.musicFilter.connect(this.musicDuck);
+    this.musicDuck.connect(this.master);
 
     this.ambienceBus = ctx.createGain();
     this.ambienceBus.gain.value = 0.9;
@@ -120,6 +186,10 @@ export class AudioEngine {
     this.sfxBus = ctx.createGain();
     this.sfxBus.gain.value = this.settings.sfxVolume;
     this.sfxBus.connect(this.master);
+
+    this.voiceBus = ctx.createGain();
+    this.voiceBus.gain.value = this.settings.voiceVolume ?? 1;
+    this.voiceBus.connect(this.master);
 
     // Kathedralenhall als synthetische Impulsantwort.
     this.reverb = ctx.createConvolver();
@@ -170,12 +240,15 @@ export class AudioEngine {
   }
 
   applySettings(s) {
+    const wasRecorded = this._useSamples;
     this.settings = s;
     if (!this.ready) return;
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this._muted ? 0 : s.masterVolume, t, 0.05);
     this.musicBus.gain.setTargetAtTime(s.musicVolume, t, 0.05);
     this.sfxBus.gain.setTargetAtTime(s.sfxVolume, t, 0.05);
+    this.voiceBus.gain.setTargetAtTime(s.voiceVolume ?? 1, t, 0.05);
+    if (wasRecorded !== this._useSamples) this._refreshSources();
   }
 
   setMuted(m) {
@@ -188,15 +261,20 @@ export class AudioEngine {
 
   /** Musikstück wechseln. `fade` in Sekunden. */
   playTrack(def, fade = 1.4) {
+    if (!def) return;
     if (!this.ready) { this.track = def; return; }
-    if (this.track && this.track.id === def.id) return;
+    const cur = this._pendingTrack || this.track;
+    if (cur && cur.id === def.id && !this._musicStopping) return;
+    this._musicStopping = false;
+    clearTimeout(this._musicTimer);
     const t = this.ctx.currentTime;
     if (this.track) {
-      // Alte Spur ausblenden, dann hart wechseln.
+      // Alte Spur ausblenden, dann wechseln.
       this.musicBus.gain.cancelScheduledValues(t);
       this.musicBus.gain.setValueAtTime(this.musicBus.gain.value, t);
       this.musicBus.gain.linearRampToValueAtTime(0.0001, t + fade * 0.5);
-      setTimeout(() => this._swap(def, fade), fade * 500);
+      this._pendingTrack = def;   // die alte Spur klingt noch aus
+      this._musicTimer = setTimeout(() => this._swap(def, fade), fade * 500);
     } else {
       this._swap(def, fade);
     }
@@ -204,6 +282,7 @@ export class AudioEngine {
 
   _swap(def, fade) {
     this.track = def;
+    this._pendingTrack = null;
     this.step = 0;
     this.nextNoteTime = this.ctx ? this.ctx.currentTime + 0.08 : 0;
     if (!this.ready) return;
@@ -211,6 +290,50 @@ export class AudioEngine {
     this.musicBus.gain.cancelScheduledValues(t);
     this.musicBus.gain.setValueAtTime(0.0001, t);
     this.musicBus.gain.linearRampToValueAtTime(this.settings.musicVolume, t + fade * 0.5);
+    this._startSampleMusic(def, fade);
+  }
+
+  /**
+   * Aufgenommene Fassung des Stücks starten, falls vorhanden. Solange sie lädt,
+   * schweigt der Sequenzer; schlägt das Laden fehl, spielt er doch.
+   */
+  _startSampleMusic(def, fade) {
+    const token = ++this._musicToken;
+    const path = this._path('music', def.id);
+    if (this._music && this._music.path !== path) this._stopSampleMusic(0.3);
+    if (this._music && this._music.path === path && !this._music.loop.stopped) {
+      this._sampleTrack = true;   // läuft schon (z. B. nach dem Einstellungs-Wechsel)
+      return;
+    }
+    this._sampleTrack = !!path;
+    if (!path) return;
+    this.samples.load(path).then((buf) => {
+      if (token !== this._musicToken || this.track !== def) return;
+      if (!buf) {
+        // Datei kaputt oder offline: erzeugte Musik übernimmt.
+        this._sampleTrack = false;
+        this.nextNoteTime = this.ctx.currentTime + 0.08;
+        return;
+      }
+      const trim = this.ctx.createGain();
+      trim.gain.value = this.samples.gainFor(path, LEVEL.music, 'rms', 12);
+      trim.connect(this.musicBus);
+      trim.connect(this.musicSend);
+      const loop = new MusicLoop(this.ctx, buf, trim, { fadeIn: Math.max(0.6, fade * 0.8), crossfade: 5 });
+      this._music = { path, loop, trim };
+    });
+  }
+
+  _stopSampleMusic(fade = 1) {
+    const m = this._music;
+    if (!m) return;
+    this._music = null;
+    m.loop.stop(fade);
+    setTimeout(() => {
+      try { m.trim.disconnect(); } catch { /* schon weg */ }
+      // Nur freigeben, wenn nicht gleich wieder dieselbe Datei läuft.
+      if (!this._music || this._music.path !== m.path) this.samples.release(m.path);
+    }, fade * 1000 + 200);
   }
 
   stopMusic(fade = 1.0) {
@@ -219,7 +342,16 @@ export class AudioEngine {
     this.musicBus.gain.cancelScheduledValues(t);
     this.musicBus.gain.setValueAtTime(this.musicBus.gain.value, t);
     this.musicBus.gain.linearRampToValueAtTime(0.0001, t + fade);
-    setTimeout(() => { this.track = null; }, fade * 1000);
+    this._musicStopping = true;
+    this._pendingTrack = null;
+    clearTimeout(this._musicTimer);
+    this._musicTimer = setTimeout(() => {
+      this._musicStopping = false;
+      this.track = null;
+      this._musicToken++;
+      this._sampleTrack = false;
+      this._stopSampleMusic(0.05);
+    }, fade * 1000);
   }
 
   /** 0 = Erkundung, 1 = voller Kampf. Blendet Schlagzeug und Chor ein. */
@@ -232,7 +364,7 @@ export class AudioEngine {
       if (!this.ready) return;
       if (this.ctx.state === 'suspended') return;
       this._scheduleHeart();
-      if (!this.track) return;
+      if (!this.track || this._sampleTrack) return;
 
       // Intensität sanft nachziehen, sonst springt die Musik.
       this.intensity += (this._targetIntensity - this.intensity) * 0.06;
@@ -481,6 +613,8 @@ export class AudioEngine {
     if (!this.ready) return;
     const fn = SFX[name];
     if (!fn) return;
+    // Stimmen haben Vorrang: das Tipp-Geräusch der Textbox entfällt, wenn gesprochen wird.
+    if (name === 'textBlip' && this.voiceActive()) return;
     // Bei vielen gleichzeitigen Effekten Lautstärke leicht absenken,
     // damit ein Gegnerpulk nicht alles zumatscht.
     const now = this.ctx.currentTime;
@@ -500,13 +634,121 @@ export class AudioEngine {
       panner.pan.value = pan;
       panner.connect(this.sfxBus);
     }
-    this._dest = panner;
-    try { fn(this, this.ctx.currentTime, opts); } catch { /* nie wegen Sound abstürzen */ }
-    this._dest = null;
-    if (panner) {
-      // Panner nach dem längsten Effekt (Tod, ~1,6 s) wieder abbauen.
-      setTimeout(() => { try { panner.disconnect(); } catch { /* schon weg */ } }, 2500);
+    let dur = 1.6;
+    const sample = this._sampleFor(name, opts);
+    if (sample) {
+      dur = this._playSample(sample.path, sample.buf, name, opts, panner);
+    } else {
+      this._dest = panner;
+      try { fn(this, this.ctx.currentTime, opts); } catch { /* nie wegen Sound abstürzen */ }
+      this._dest = null;
     }
+    if (panner) {
+      // Panner nach dem Effekt wieder abbauen.
+      setTimeout(() => { try { panner.disconnect(); } catch { /* schon weg */ } }, Math.max(2500, dur * 1000 + 300));
+    }
+  }
+
+  /** Geladene Aufnahme für einen Effekt – zufällige Variante, nie zweimal dieselbe. */
+  _sampleFor(name, opts) {
+    const key = name === 'step' ? 'step_' + (opts.surface || 'stone') : name;
+    const list = this._path('sfx', key);
+    if (!list || !list.length) return null;
+    const last = this._lastVariant.get(key);
+    let i = Math.floor(this._rng.next() * list.length);
+    if (list.length > 1 && i === last) i = (i + 1) % list.length;
+    // Noch nicht geladen? Dann irgendeine geladene Variante, sonst Synthese.
+    for (let k = 0; k < list.length; k++) {
+      const j = (i + k) % list.length;
+      const buf = this.samples.now(list[j]);
+      if (buf) { this._lastVariant.set(key, j); return { path: list[j], buf }; }
+    }
+    return null;
+  }
+
+  _playSample(path, buf, name, opts, panner) {
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    // Leicht andere Tonhöhe bei jedem Mal – zehn gleiche Schwerthiebe klingen sonst künstlich.
+    const rate = 0.96 + this._rng.next() * 0.08;
+    src.playbackRate.value = rate;
+    const g = ctx.createGain();
+    g.gain.value = (opts.gain ?? 1) * (SFX_MIX[name] ?? 1) * this.samples.gainFor(path, LEVEL.sfx, 'win', 18);
+    src.connect(g);
+    g.connect(panner || this.sfxBus);
+    g.connect(this.sfxSend);
+    src.start(t);
+    src.onended = () => { try { g.disconnect(); } catch { /* egal */ } };
+    return buf.duration / rate;
+  }
+
+  // === Stimmen ==============================================================
+
+  /**
+   * Sprachaufnahme abspielen (id aus src/core/voice-id.js).
+   * Liefert true, wenn es eine Aufnahme gibt – sie kann aber noch laden.
+   */
+  playVoice(id) {
+    this.stopVoice(0.08);
+    if (!this.ready || !id) return false;
+    const path = this._path('voice', id);
+    if (!path) return false;
+    const token = ++this._voiceToken;
+    this._voicePending = true;
+    this.samples.load(path).then((buf) => {
+      if (token !== this._voiceToken) return;
+      this._voicePending = false;
+      if (!buf) return;
+      const ctx = this.ctx;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const g = ctx.createGain();
+      g.gain.value = this.samples.gainFor(path, LEVEL.voice, 'win', 12);
+      src.connect(g);
+      g.connect(this.voiceBus);
+      src.start(ctx.currentTime + 0.02);
+      const v = { src, g, path, end: ctx.currentTime + 0.02 + buf.duration };
+      this._voice = v;
+      this._duck(true);
+      src.onended = () => {
+        try { g.disconnect(); } catch { /* egal */ }
+        this.samples.release(path);
+        if (this._voice === v) { this._voice = null; this._duck(false); }
+      };
+    });
+    return true;
+  }
+
+  stopVoice(fade = 0.15) {
+    this._voiceToken++;
+    this._voicePending = false;
+    const v = this._voice;
+    if (!v) return;
+    this._voice = null;
+    const t = this.ctx.currentTime;
+    try {
+      v.g.gain.cancelScheduledValues(t);
+      v.g.gain.setValueAtTime(v.g.gain.value, t);
+      v.g.gain.linearRampToValueAtTime(0.0001, t + fade);
+      v.src.stop(t + fade + 0.02);
+    } catch { /* schon vorbei */ }
+    this._duck(false);
+  }
+
+  /** Spricht gerade jemand (oder lädt die Aufnahme noch)? */
+  voiceActive() { return this._voicePending || !!this._voice; }
+
+  /** Restdauer der laufenden Aufnahme in Sekunden; null = keine, Infinity = lädt noch. */
+  voiceRemaining() {
+    if (this._voice) return Math.max(0, this._voice.end - this.ctx.currentTime);
+    return this._voicePending ? Infinity : null;
+  }
+
+  _duck(on) {
+    if (!this.ready) return;
+    this.musicDuck.gain.setTargetAtTime(on ? 0.5 : 1, this.ctx.currentTime, on ? 0.08 : 0.4);
   }
 
   /** Kameraposition für die Stereo-Verteilung. Jeden Frame setzen. */
@@ -621,28 +863,51 @@ export class AudioEngine {
     const timers = [];
     const def = AMBIENCE[kind] || {};
 
-    // Grundrauschen: Wind, Regen, fließendes Wasser – jeweils anders gefiltert.
-    for (const layer of def.layers || []) {
-      const n = this._loopNoise(layer.type, layer.freq, layer.q ?? 1, layer.gain, out);
-      sources.push(n.src);
-      if (layer.sweep) {
-        // Langsames Auf und Ab, damit der Wind "atmet".
-        sources.push(this._lfo(n.f.frequency, layer.sweep, layer.freq * 0.45));
-        sources.push(this._lfo(n.g.gain, layer.sweep * 0.7, layer.gain * 0.5));
+    let stopped = false;
+    const synthBed = () => {
+      // Grundrauschen: Wind, Regen, fließendes Wasser – jeweils anders gefiltert.
+      for (const layer of def.layers || []) {
+        const n = this._loopNoise(layer.type, layer.freq, layer.q ?? 1, layer.gain, out);
+        sources.push(n.src);
+        if (layer.sweep) {
+          // Langsames Auf und Ab, damit der Wind "atmet".
+          sources.push(this._lfo(n.f.frequency, layer.sweep, layer.freq * 0.45));
+          sources.push(this._lfo(n.g.gain, layer.sweep * 0.7, layer.gain * 0.5));
+        }
       }
-    }
 
-    // Tiefer Grundton, den man mehr spürt als hört.
-    if (def.drone) {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = def.drone;
-      const g = ctx.createGain();
-      g.gain.value = 0.05;
-      o.connect(g); g.connect(out);
-      o.start();
-      sources.push(o);
-      sources.push(this._lfo(g.gain, 0.07, 0.025));
+      // Tiefer Grundton, den man mehr spürt als hört.
+      if (def.drone) {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = def.drone;
+        const g = ctx.createGain();
+        g.gain.value = 0.05;
+        o.connect(g); g.connect(out);
+        o.start();
+        sources.push(o);
+        sources.push(this._lfo(g.gain, 0.07, 0.025));
+      }
+    };
+
+    // Aufgenommene Kulisse als nahtlose Schleife; die einzelnen Ereignisse
+    // (Tropfen, Donner, Ticken) kommen weiterhin obendrauf.
+    const path = this._path('amb', kind);
+    if (path) {
+      this.samples.load(path).then((buf) => {
+        if (stopped) return;
+        if (!buf) { synthBed(); return; }
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        const g = ctx.createGain();
+        g.gain.value = this.samples.gainFor(path, LEVEL.amb, 'rms', 14);
+        src.connect(g); g.connect(out);
+        src.start(ctx.currentTime, this._rng.next() * buf.duration);
+        sources.push(src);
+      });
+    } else {
+      synthBed();
     }
 
     // Einzelne Ereignisse in zufälligen Abständen: Tropfen, Donner, Ticken ...
@@ -661,6 +926,7 @@ export class AudioEngine {
     return {
       out,
       stop: () => {
+        stopped = true;
         for (const t of timers) clearTimeout(t);
         for (const s of sources) { try { s.stop(); } catch { /* schon gestoppt */ } }
         try { out.disconnect(); } catch { /* egal */ }
@@ -706,6 +972,8 @@ export class AudioEngine {
 
   dispose() {
     if (this.ambience) this.ambience.stop();
+    this.stopVoice(0.01);
+    this._stopSampleMusic(0.01);
     if (this._schedulerId) clearInterval(this._schedulerId);
     this._schedulerId = null;
     if (this.ctx) this.ctx.close().catch(() => {});

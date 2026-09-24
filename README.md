@@ -85,7 +85,10 @@ Durch Plattformen fallen: **unten + Springen**. Die Tastensymbole im Spiel passe
 ## Technik (für Neugierige)
 
 - Reines JavaScript mit ES-Modulen, **WebGL2** und Canvas 2D, keine Bibliotheken, kein Build-Schritt.
-- **Alles prozedural:** Figuren, Kulissen und Effekte werden im Code gezeichnet (Tuschekontur, Cel-Shading, Stoffsimulation für Umhang und Haare), der komplette **Soundtrack und alle Geräusche** werden live mit der Web Audio API synthetisiert – keine einzige Bild- oder Audiodatei.
+- **Grafik prozedural:** Figuren, Kulissen und Effekte werden im Code gezeichnet (Tuschekontur, Cel-Shading, Stoffsimulation für Umhang und Haare) – keine einzige Bilddatei.
+- **Ton mit ElevenLabs:** Orchestermusik für jedes Gebiet und jeden Boss, Umgebungsgeräusche (Gruft, Wasser, Sturm, Bibliothek, Uhrwerk), rund 40 Soundeffekte in 81 Varianten und **alle Dialoge mit Sprechern** (Erzähler, Ingomar, Henry, Yvonne, Oma Renate, Opa Egon, die Jäger …) liegen unter `assets/audio/` und wurden mit ElevenLabs erzeugt. Die Engine gleicht die Lautstärken automatisch an, spielt Effekte leicht verstimmt und nie zweimal gleich, blendet Musik weich in die Schleife über und senkt sie ab, solange jemand spricht.
+- **Rückfall auf Synthese:** Fehlt eine Datei, lädt sie noch oder ist man offline, erzeugt die Web Audio API den Klang wie früher live (Orgel, Cembalo, Chor, Pauken, alle Effekte). Unter *Optionen → Klang* lässt sich auch ganz auf den erzeugten Klang umschalten; *Optionen → Stimmen* regelt die Sprecher.
+- Neue Klangdateien: in den passenden Ordner legen (`music/<track>.mp3`, `amb/<art>.mp3`, `sfx/<name>_<n>.mp3`, `voice/<id>.mp3`) und `npm run audio:manifest` ausführen. Die IDs der Sprachzeilen listet `node tools/voice-lines.mjs --json` (inkl. Aussprache-Hinweisen, z. B. „Yvonne“ → „Yvonn“).
 - **WebGL-Renderer** (Standard): Die Grafikkarte berechnet jedes Licht pro Pixel mit weichen Schatten, Relief- und Kantenlicht auf Mauern und Figuren, Figurenschatten, Lichtstrahlen und leuchtenden Dunst, HDR-Bloom und eine filmische Tonkurve.
 - Ohne WebGL2 (alte Fernseher-Browser) schaltet das Spiel automatisch auf den klassischen Canvas-2D-Renderer um. Umstellen geht auch von Hand unter *Optionen → Grafik-Engine*.
 - Gemalte Gegenlicht-Kulissen pro Gebiet.
@@ -104,5 +107,6 @@ npm test             # alle Tests
 | `tools/smoke-test.mjs` | Titel → Vorspann → Intro → erste Kämpfe im echten Browser, ohne JavaScript-Fehler |
 | `tools/systems-test.mjs` | Gamepad-Steuerung (simulierter Xbox-Controller), Speichern/Laden, hörbarer Ton |
 | `tools/playthrough.mjs` | Ein Bot spielt alle sechs Gebiete im Zeitraffer durch: Arenen, Bosse, Kräfte, Übergänge, Abspann |
+| `tools/audio-test.mjs` (`npm run test:audio`) | Aufgenommene Musik, Umgebung, Effekte und Stimmen werden wirklich gespielt; Lautstärke im Vergleich zum erzeugten Klang |
 
 Weitere Werkzeuge: `tools/screenshots.mjs`, `tools/boss-shots.mjs`, `tools/profile.mjs` (Renderzeit pro Stufe). Mit `?zone=hof` in der Adresse springt man direkt in ein Gebiet (eigener Test-Speicherplatz), mit `?debug` erscheint eine Bildrate-Anzeige.

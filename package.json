@@ -9,7 +9,9 @@
     "test": "node tools/validate-levels.mjs && node tools/smoke-test.mjs && node tools/systems-test.mjs && node tools/playthrough.mjs",
     "validate": "node tools/validate-levels.mjs",
     "screenshots": "node tools/screenshots.mjs",
-    "profile": "node tools/profile.mjs"
+    "profile": "node tools/profile.mjs",
+    "test:audio": "node tools/audio-test.mjs",
+    "audio:manifest": "node tools/audio-manifest.mjs"
   },
   "devDependencies": {
     "playwright": "^1.56.1"

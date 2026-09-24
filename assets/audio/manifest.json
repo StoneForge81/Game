@@ -1,0 +1,315 @@
+{
+ "music": {
+  "bibliothek": "music/bibliothek.mp3",
+  "boss": "music/boss.mp3",
+  "finale": "music/finale.mp3",
+  "hof": "music/hof.mp3",
+  "katakomben": "music/katakomben.mp3",
+  "kathedrale": "music/kathedrale.mp3",
+  "krypta": "music/krypta.mp3",
+  "sanctuary": "music/sanctuary.mp3",
+  "title": "music/title.mp3",
+  "uhrturm": "music/uhrturm.mp3"
+ },
+ "amb": {
+  "clockwork": "amb/clockwork.mp3",
+  "crypt": "amb/crypt.mp3",
+  "library": "amb/library.mp3",
+  "storm": "amb/storm.mp3",
+  "water": "amb/water.mp3"
+ },
+ "sfx": {
+  "alert": [
+   "sfx/alert_1.mp3"
+  ],
+  "bat": [
+   "sfx/bat_1.mp3",
+   "sfx/bat_2.mp3"
+  ],
+  "bossRoar": [
+   "sfx/bossRoar_1.mp3",
+   "sfx/bossRoar_2.mp3",
+   "sfx/bossRoar_3.mp3"
+  ],
+  "chain": [
+   "sfx/chain_1.mp3"
+  ],
+  "checkpoint": [
+   "sfx/checkpoint_1.mp3"
+  ],
+  "cloak": [
+   "sfx/cloak_1.mp3"
+  ],
+  "crit": [
+   "sfx/crit_1.mp3",
+   "sfx/crit_2.mp3",
+   "sfx/crit_3.mp3"
+  ],
+  "dash": [
+   "sfx/dash_1.mp3",
+   "sfx/dash_2.mp3",
+   "sfx/dash_3.mp3"
+  ],
+  "death": [
+   "sfx/death_1.mp3",
+   "sfx/death_2.mp3",
+   "sfx/death_3.mp3"
+  ],
+  "door": [
+   "sfx/door_1.mp3"
+  ],
+  "drainFinish": [
+   "sfx/drainFinish_1.mp3",
+   "sfx/drainFinish_2.mp3",
+   "sfx/drainFinish_3.mp3"
+  ],
+  "drain": [
+   "sfx/drain_1.mp3",
+   "sfx/drain_2.mp3",
+   "sfx/drain_3.mp3"
+  ],
+  "enemyDeath": [
+   "sfx/enemyDeath_1.mp3",
+   "sfx/enemyDeath_2.mp3",
+   "sfx/enemyDeath_3.mp3"
+  ],
+  "explosion": [
+   "sfx/explosion_1.mp3"
+  ],
+  "gear": [
+   "sfx/gear_1.mp3"
+  ],
+  "glassBreak": [
+   "sfx/glassBreak_1.mp3"
+  ],
+  "heartShard": [
+   "sfx/heartShard_1.mp3"
+  ],
+  "hitHeavy": [
+   "sfx/hitHeavy_1.mp3",
+   "sfx/hitHeavy_2.mp3",
+   "sfx/hitHeavy_3.mp3"
+  ],
+  "hit": [
+   "sfx/hit_1.mp3",
+   "sfx/hit_2.mp3"
+  ],
+  "holyBurn": [
+   "sfx/holyBurn_1.mp3",
+   "sfx/holyBurn_2.mp3",
+   "sfx/holyBurn_3.mp3"
+  ],
+  "holyShot": [
+   "sfx/holyShot_1.mp3"
+  ],
+  "hurt": [
+   "sfx/hurt_1.mp3",
+   "sfx/hurt_2.mp3",
+   "sfx/hurt_3.mp3"
+  ],
+  "jump": [
+   "sfx/jump_1.mp3",
+   "sfx/jump_2.mp3",
+   "sfx/jump_3.mp3"
+  ],
+  "lance": [
+   "sfx/lance_1.mp3",
+   "sfx/lance_2.mp3",
+   "sfx/lance_3.mp3"
+  ],
+  "land": [
+   "sfx/land_1.mp3",
+   "sfx/land_2.mp3",
+   "sfx/land_3.mp3"
+  ],
+  "levelUp": [
+   "sfx/levelUp_1.mp3"
+  ],
+  "mist": [
+   "sfx/mist_1.mp3",
+   "sfx/mist_2.mp3",
+   "sfx/mist_3.mp3"
+  ],
+  "parry": [
+   "sfx/parry_1.mp3",
+   "sfx/parry_2.mp3"
+  ],
+  "pickup": [
+   "sfx/pickup_1.mp3",
+   "sfx/pickup_2.mp3",
+   "sfx/pickup_3.mp3"
+  ],
+  "plead": [
+   "sfx/plead_1.mp3"
+  ],
+  "spare": [
+   "sfx/spare_1.mp3"
+  ],
+  "step_metal": [
+   "sfx/step_metal_1.mp3"
+  ],
+  "step_stone": [
+   "sfx/step_stone_1.mp3",
+   "sfx/step_stone_2.mp3",
+   "sfx/step_stone_3.mp3"
+  ],
+  "step_water": [
+   "sfx/step_water_1.mp3",
+   "sfx/step_water_2.mp3",
+   "sfx/step_water_3.mp3"
+  ],
+  "step_wood": [
+   "sfx/step_wood_1.mp3",
+   "sfx/step_wood_2.mp3"
+  ],
+  "stoneBreak": [
+   "sfx/stoneBreak_1.mp3"
+  ],
+  "swing": [
+   "sfx/swing_1.mp3",
+   "sfx/swing_2.mp3",
+   "sfx/swing_3.mp3"
+  ],
+  "thunder": [
+   "sfx/thunder_1.mp3"
+  ],
+  "wolf": [
+   "sfx/wolf_1.mp3",
+   "sfx/wolf_2.mp3",
+   "sfx/wolf_3.mp3"
+  ]
+ },
+ "voice": {
+  "ambrosius-1qkvg96": "voice/ambrosius-1qkvg96.mp3",
+  "ambrosius-kgyqak": "voice/ambrosius-kgyqak.mp3",
+  "ambrosius-loe254": "voice/ambrosius-loe254.mp3",
+  "cogliostro-12n8deu": "voice/cogliostro-12n8deu.mp3",
+  "cogliostro-1jqlcq": "voice/cogliostro-1jqlcq.mp3",
+  "cogliostro-1s85tio": "voice/cogliostro-1s85tio.mp3",
+  "cogliostro-i4udko": "voice/cogliostro-i4udko.mp3",
+  "egon-1ddbv7m": "voice/egon-1ddbv7m.mp3",
+  "egon-1lcbwn2": "voice/egon-1lcbwn2.mp3",
+  "egon-1sdqys2": "voice/egon-1sdqys2.mp3",
+  "egon-4iwbx4": "voice/egon-4iwbx4.mp3",
+  "egon-4nnolv": "voice/egon-4nnolv.mp3",
+  "egon-wg2um7": "voice/egon-wg2um7.mp3",
+  "henry-171086e": "voice/henry-171086e.mp3",
+  "henry-19yzo2j": "voice/henry-19yzo2j.mp3",
+  "henry-1bvnnzu": "voice/henry-1bvnnzu.mp3",
+  "henry-1c9oby3": "voice/henry-1c9oby3.mp3",
+  "henry-1eu6qha": "voice/henry-1eu6qha.mp3",
+  "henry-1ldms3l": "voice/henry-1ldms3l.mp3",
+  "henry-1llllx8": "voice/henry-1llllx8.mp3",
+  "henry-1vbp9cx": "voice/henry-1vbp9cx.mp3",
+  "henry-1xabtb6": "voice/henry-1xabtb6.mp3",
+  "henry-6kb2iq": "voice/henry-6kb2iq.mp3",
+  "henry-ajeumr": "voice/henry-ajeumr.mp3",
+  "henry-bkubta": "voice/henry-bkubta.mp3",
+  "henry-khnfjn": "voice/henry-khnfjn.mp3",
+  "henry-qsu49v": "voice/henry-qsu49v.mp3",
+  "henry-rjuwyo": "voice/henry-rjuwyo.mp3",
+  "henry-w4safn": "voice/henry-w4safn.mp3",
+  "henry-wigp7e": "voice/henry-wigp7e.mp3",
+  "henry-xp3su6": "voice/henry-xp3su6.mp3",
+  "henry-xt7k74": "voice/henry-xt7k74.mp3",
+  "ines-19etbes": "voice/ines-19etbes.mp3",
+  "ines-1f0y2zv": "voice/ines-1f0y2zv.mp3",
+  "ines-1kxhxt4": "voice/ines-1kxhxt4.mp3",
+  "ines-bs4ebw": "voice/ines-bs4ebw.mp3",
+  "ines-y95ffs": "voice/ines-y95ffs.mp3",
+  "ingomar-13lrsst": "voice/ingomar-13lrsst.mp3",
+  "ingomar-14yg64l": "voice/ingomar-14yg64l.mp3",
+  "ingomar-15uhwre": "voice/ingomar-15uhwre.mp3",
+  "ingomar-17r9koi": "voice/ingomar-17r9koi.mp3",
+  "ingomar-1cji67e": "voice/ingomar-1cji67e.mp3",
+  "ingomar-1d3mb13": "voice/ingomar-1d3mb13.mp3",
+  "ingomar-1es0vyx": "voice/ingomar-1es0vyx.mp3",
+  "ingomar-1henq92": "voice/ingomar-1henq92.mp3",
+  "ingomar-1ho2u4z": "voice/ingomar-1ho2u4z.mp3",
+  "ingomar-1lukk09": "voice/ingomar-1lukk09.mp3",
+  "ingomar-1pp1wwk": "voice/ingomar-1pp1wwk.mp3",
+  "ingomar-1rffvd8": "voice/ingomar-1rffvd8.mp3",
+  "ingomar-1wuew1q": "voice/ingomar-1wuew1q.mp3",
+  "ingomar-5rnun8": "voice/ingomar-5rnun8.mp3",
+  "ingomar-cwmpty": "voice/ingomar-cwmpty.mp3",
+  "ingomar-dfz0n5": "voice/ingomar-dfz0n5.mp3",
+  "ingomar-dx8hym": "voice/ingomar-dx8hym.mp3",
+  "ingomar-g6ckb9": "voice/ingomar-g6ckb9.mp3",
+  "ingomar-g7k3kj": "voice/ingomar-g7k3kj.mp3",
+  "ingomar-le0dp3": "voice/ingomar-le0dp3.mp3",
+  "ingomar-p1gh0": "voice/ingomar-p1gh0.mp3",
+  "ingomar-prj3vk": "voice/ingomar-prj3vk.mp3",
+  "ingomar-q8i5uy": "voice/ingomar-q8i5uy.mp3",
+  "ingomar-t48dl3": "voice/ingomar-t48dl3.mp3",
+  "ingomar-teq4bs": "voice/ingomar-teq4bs.mp3",
+  "ingomar-ugy4js": "voice/ingomar-ugy4js.mp3",
+  "ingomar-wjd9au": "voice/ingomar-wjd9au.mp3",
+  "ingomar-xm0qu3": "voice/ingomar-xm0qu3.mp3",
+  "isolde-1b96cny": "voice/isolde-1b96cny.mp3",
+  "isolde-1l0uqq7": "voice/isolde-1l0uqq7.mp3",
+  "isolde-1yj8xb1": "voice/isolde-1yj8xb1.mp3",
+  "malachias-1g6dbpv": "voice/malachias-1g6dbpv.mp3",
+  "malachias-1vswnkz": "voice/malachias-1vswnkz.mp3",
+  "malachias-1wdnilr": "voice/malachias-1wdnilr.mp3",
+  "malachias-r42h1t": "voice/malachias-r42h1t.mp3",
+  "matthias-16zd1o5": "voice/matthias-16zd1o5.mp3",
+  "matthias-1scheyz": "voice/matthias-1scheyz.mp3",
+  "matthias-1sf40mk": "voice/matthias-1sf40mk.mp3",
+  "matthias-ig6r2z": "voice/matthias-ig6r2z.mp3",
+  "mirella-1h8u68e": "voice/mirella-1h8u68e.mp3",
+  "mirella-gt66pl": "voice/mirella-gt66pl.mp3",
+  "mirella-l1wamp": "voice/mirella-l1wamp.mp3",
+  "narrator-10m0cug": "voice/narrator-10m0cug.mp3",
+  "narrator-138uu60": "voice/narrator-138uu60.mp3",
+  "narrator-15ohp9k": "voice/narrator-15ohp9k.mp3",
+  "narrator-16szj6q": "voice/narrator-16szj6q.mp3",
+  "narrator-1cvn6hq": "voice/narrator-1cvn6hq.mp3",
+  "narrator-1lpaf81": "voice/narrator-1lpaf81.mp3",
+  "narrator-1nqj1ar": "voice/narrator-1nqj1ar.mp3",
+  "narrator-1o3pd6p": "voice/narrator-1o3pd6p.mp3",
+  "narrator-1qc6qdf": "voice/narrator-1qc6qdf.mp3",
+  "narrator-1rbyu27": "voice/narrator-1rbyu27.mp3",
+  "narrator-1s2mh01": "voice/narrator-1s2mh01.mp3",
+  "narrator-1tdeue2": "voice/narrator-1tdeue2.mp3",
+  "narrator-1wya28": "voice/narrator-1wya28.mp3",
+  "narrator-4ptdu2": "voice/narrator-4ptdu2.mp3",
+  "narrator-6csjm2": "voice/narrator-6csjm2.mp3",
+  "narrator-7jsi3h": "voice/narrator-7jsi3h.mp3",
+  "narrator-dszly9": "voice/narrator-dszly9.mp3",
+  "narrator-gmgktr": "voice/narrator-gmgktr.mp3",
+  "narrator-hkzibd": "voice/narrator-hkzibd.mp3",
+  "narrator-psfegf": "voice/narrator-psfegf.mp3",
+  "narrator-s3axbr": "voice/narrator-s3axbr.mp3",
+  "narrator-tyuq8k": "voice/narrator-tyuq8k.mp3",
+  "narrator-wcc5r1": "voice/narrator-wcc5r1.mp3",
+  "narrator-wd738t": "voice/narrator-wd738t.mp3",
+  "prisoner-19l06yn": "voice/prisoner-19l06yn.mp3",
+  "prisoner-1ozqrnz": "voice/prisoner-1ozqrnz.mp3",
+  "prisoner-4sfxw2": "voice/prisoner-4sfxw2.mp3",
+  "prisoner-g5bmvo": "voice/prisoner-g5bmvo.mp3",
+  "prisoner-pjwjyp": "voice/prisoner-pjwjyp.mp3",
+  "prisoner-qbepth": "voice/prisoner-qbepth.mp3",
+  "renate-15wqt8m": "voice/renate-15wqt8m.mp3",
+  "renate-1sd88vl": "voice/renate-1sd88vl.mp3",
+  "renate-2v64nb": "voice/renate-2v64nb.mp3",
+  "renate-9ambwk": "voice/renate-9ambwk.mp3",
+  "renate-emp9n3": "voice/renate-emp9n3.mp3",
+  "renate-nqfkik": "voice/renate-nqfkik.mp3",
+  "renate-txakb1": "voice/renate-txakb1.mp3",
+  "renate-vkuf6": "voice/renate-vkuf6.mp3",
+  "serafine-17hvmff": "voice/serafine-17hvmff.mp3",
+  "serafine-1o385gt": "voice/serafine-1o385gt.mp3",
+  "serafine-1wwmd9q": "voice/serafine-1wwmd9q.mp3",
+  "serafine-61dbtt": "voice/serafine-61dbtt.mp3",
+  "serafine-gbuixc": "voice/serafine-gbuixc.mp3",
+  "yvonne-11cw5k7": "voice/yvonne-11cw5k7.mp3",
+  "yvonne-14w0hel": "voice/yvonne-14w0hel.mp3",
+  "yvonne-1ao9g4z": "voice/yvonne-1ao9g4z.mp3",
+  "yvonne-1boawa2": "voice/yvonne-1boawa2.mp3",
+  "yvonne-2mopbr": "voice/yvonne-2mopbr.mp3",
+  "yvonne-7ayetc": "voice/yvonne-7ayetc.mp3",
+  "yvonne-gcjhfo": "voice/yvonne-gcjhfo.mp3",
+  "yvonne-gnrnsd": "voice/yvonne-gnrnsd.mp3",
+  "yvonne-ihy2ut": "voice/yvonne-ihy2ut.mp3"
+ }
+}

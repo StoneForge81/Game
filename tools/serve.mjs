@@ -22,6 +22,7 @@ const TYPES = {
   '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json',
   '.woff2': 'font/woff2',
+  '.mp3': 'audio/mpeg',
 };
 
 const server = http.createServer((req, res) => {

@@ -7,6 +7,7 @@ import { makeCanvas } from '../render/renderer.js';
 import { FONT_HEAD, FONT_BODY, wrap, gothicPanel, drawGlyph, strokeText, formatGlyphs } from './text.js';
 import { glyph } from '../core/input.js';
 import { CHAR_SCALE } from '../data/config.js';
+import { voiceId } from '../core/voice-id.js';
 
 const CHOICES = {
   prisoner: [
@@ -50,6 +51,14 @@ export class Dialogue {
     this.active = true;
     this.fadeIn = 0;
     this.app.audio.setMuffle(0.35);
+    this._speak();
+  }
+
+  /** Aufgenommene Stimme zur aktuellen Zeile abspielen (falls vorhanden). */
+  _speak() {
+    const l = this.line;
+    if (l) this.app.audio.playVoice(voiceId(l.who, l.text));
+    else this.app.audio.stopVoice();
   }
 
   get line() { return this.lines[this.i]; }
@@ -78,6 +87,7 @@ export class Dialogue {
         this.choice = null;
         this.active = false;
         this.app.audio.setMuffle(0);
+        this.app.audio.stopVoice(0.3);
         this.onChoice && this.onChoice(kind, opt.id);
       }
       return;
@@ -104,6 +114,7 @@ export class Dialogue {
         this.i++;
         this.chars = 0;
         if (this.i >= this.lines.length) this._finish();
+        else this._speak();
       }
     }
   }
@@ -111,6 +122,7 @@ export class Dialogue {
   _finish() {
     this.active = false;
     this.app.audio.setMuffle(0);
+    this.app.audio.stopVoice(0.3);
     const cb = this.onEnd;
     this.onEnd = null;
     cb && cb();
