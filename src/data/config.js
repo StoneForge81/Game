@@ -97,6 +97,7 @@ export const DEFAULT_SETTINGS = {
   safeAreaInset: 0,      // Overscan-Ausgleich für ältere Fernseher (0–6 %)
   brightness: 1,         // 0.6–1.8: hebt dunkle Bereiche an (viele TVs verschlucken Schwarz)
   difficulty: 'normal',  // 'leicht' | 'normal' | 'schwer' (siehe DIFFICULTY)
+  engine: 'webgl',       // 'webgl' (Grafikkarte) | 'classic' (Canvas 2D, für schwache Geräte)
 };
 
 // --- Schwierigkeitsgrade -------------------------------------------------------

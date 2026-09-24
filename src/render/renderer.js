@@ -31,9 +31,10 @@ const UI_W = 1920;
 const UI_H = 1080;
 
 export class Renderer {
-  constructor(displayCanvas, settings) {
+  constructor(displayCanvas, settings, opts = {}) {
     this.display = displayCanvas;
-    this.dctx = displayCanvas.getContext('2d', { alpha: false });
+    // Im WebGL-Modus ist dieser Canvas nur die durchsichtige HUD-Ebene.
+    this.dctx = displayCanvas.getContext('2d', { alpha: !!opts.transparent });
     this.settings = settings;
 
     this.scale = QUALITY_HEIGHTS[2] / VIEW_H;
@@ -327,6 +328,12 @@ export class Renderer {
     fn(c);
     c.restore();
   }
+
+  /**
+   * Figuren, Gegenstände, Geschosse, Partikel. Hier dieselbe Ebene wie world();
+   * der WebGL-Renderer trennt sie für Randlicht und Figurenschatten.
+   */
+  actors(fn) { this.world(fn); }
 
   /**
    * Welt-Ebene beleuchten und auf die Szene legen.
