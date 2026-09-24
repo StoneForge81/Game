@@ -9,6 +9,26 @@
 
 const BASE = 'assets/audio/';
 
+// Als Fernseher-App liegt das Spiel als Datei vor (file://). Dort kann fetch()
+// nichts laden, XMLHttpRequest aber schon – also dort den alten Weg nehmen.
+const FILE_URL = typeof location !== 'undefined' && location.protocol === 'file:';
+
+function getFile(url, fresh = false) {
+  if (!FILE_URL) {
+    return fetch(url, fresh ? { cache: 'no-cache' } : undefined)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))));
+  }
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest();
+    x.open('GET', url);
+    x.responseType = 'arraybuffer';
+    // Bei file:// meldet XHR Status 0, wenn alles geklappt hat.
+    x.onload = () => ((x.status === 0 || (x.status >= 200 && x.status < 300)) && x.response ? res(x.response) : rej(new Error(x.status)));
+    x.onerror = () => rej(new Error('xhr'));
+    x.send();
+  });
+}
+
 export class SampleBank {
   constructor() {
     this.manifest = null;
@@ -22,9 +42,7 @@ export class SampleBank {
   /** Manifest laden (ohne Audiokontext möglich, also schon beim Start). */
   async loadManifest() {
     try {
-      const r = await fetch(BASE + 'manifest.json', { cache: 'no-cache' });
-      if (!r.ok) return;
-      this.manifest = await r.json();
+      this.manifest = JSON.parse(new TextDecoder().decode(await getFile(BASE + 'manifest.json', true)));
     } catch { /* keine Dateien – Synthese übernimmt */ }
   }
 
@@ -47,8 +65,7 @@ export class SampleBank {
     if (!this.ctx) return Promise.resolve(null);
     if (this.buffers.has(path)) return Promise.resolve(this.buffers.get(path));
     if (this.loading.has(path)) return this.loading.get(path);
-    const p = fetch(BASE + path)
-      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+    const p = getFile(BASE + path)
       .then((ab) => new Promise((res, rej) => this.ctx.decodeAudioData(ab, res, rej)))
       .then((buf) => {
         this.levels.set(path, measure(buf));

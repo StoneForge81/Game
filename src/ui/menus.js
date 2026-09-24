@@ -10,6 +10,7 @@ import { T } from '../game/tiles.js';
 import { DIFFICULTY } from '../data/config.js';
 import { makeCanvas } from '../render/renderer.js';
 import { voiceId } from '../core/voice-id.js';
+import { IS_TV } from '../core/tv.js';
 
 /** Richtungstasten mit Wiederholung beim Gedrückthalten (Stick-freundlich). */
 class RepeatNav {
@@ -239,7 +240,7 @@ export function optionsMenu(app, onClose) {
       { label: 'Schwierigkeit', type: 'choice', get: () => s.difficulty, set: (v) => { s.difficulty = v; apply(); },
         options: Object.entries(DIFFICULTY).map(([value, d]) => ({ label: d.label, value })),
         desc: 'Leicht: halber Schaden, schwächere Bosse. Schwer: wie ein echter Castlevania-Abend. Jederzeit änderbar.' },
-      { label: 'Vollbild', type: 'action', onSelect: () => app.toggleFullscreen(), desc: 'Am Fernseher empfohlen. Auch mit F11 möglich.' },
+      ...(IS_TV ? [] : [{ label: 'Vollbild', type: 'action', onSelect: () => app.toggleFullscreen(), desc: 'Am Fernseher empfohlen. Auch mit F11 möglich.' }]),
       { label: 'Fertig', type: 'action', onSelect: onClose },
     ],
   });
@@ -262,7 +263,9 @@ export class ControlsScreen {
     ctx.textAlign = 'center';
     ctx.font = `700 64px ${FONT_TITLE}`;
     strokeText(ctx, 'Steuerung', W / 2, y + 100, '#f4e0d0');
-    const dev = input.lastDevice === 'gamepad' ? 'Gamepad erkannt' : 'Tastatur – mit Gamepad spielt es sich am besten';
+    const dev = input.lastDevice === 'gamepad' ? 'Gamepad erkannt'
+      : IS_TV ? 'Fernbedienung: Rot = Klinge · Grün = Springen · Gelb = Zauber · Blau = Ausweichen · Zurück = Pause'
+      : 'Tastatur – mit Gamepad spielt es sich am besten';
     ctx.font = `italic 500 30px ${FONT_BODY}`; ctx.fillStyle = '#c8a8b0';
     ctx.fillText(dev, W / 2, y + 145);
     const rows = [

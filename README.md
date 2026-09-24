@@ -10,7 +10,7 @@ Gemacht zum Spielen **am Fernseher mit Gamepad**.
 
 ## Auf den Fernseher bringen
 
-Das Spiel läuft im Browser, ohne Installation. Drei Wege, vom einfachsten zum bequemsten:
+Das Spiel läuft im Browser, ohne Installation – oder als eigene App auf dem Samsung-Fernseher (Weg D).
 
 ### A) Mac oder PC per HDMI am Fernseher (empfohlen)
 
@@ -29,7 +29,15 @@ Ein Mac mit Apple-Chip oder ein Rechner mit Grafikkarte schafft flüssige 60 Bil
 
 Nach dem Zusammenführen in `main`: im Repository unter **Settings → Pages** als Quelle *Deploy from a branch*, Branch `main`, Ordner `/ (root)` wählen. Danach ist das Spiel unter `https://stoneforge81.github.io/Game/` erreichbar – auf jedem Gerät, auch direkt auf dem Fernseher, ohne Rechner.
 
-> **Wichtig:** Die Datei `index.html` nicht per Doppelklick öffnen – Browser laden Spiele-Module nicht von der Festplatte. Immer über einen der drei Wege oben.
+### D) Als App auf dem Samsung-Fernseher (Tizen)
+
+Nach jedem Merge baut GitHub die App automatisch:
+**[Blutmond-TV.zip herunterladen](https://github.com/StoneForge81/Game/releases/download/tv/Blutmond-TV.zip)**.
+Wie sie mit Tizen Studio auf den Fernseher kommt, steht Schritt für Schritt in **[TV-ANLEITUNG.md](TV-ANLEITUNG.md)**.
+Die App läuft ohne Internet und versteht auch die Fernbedienung (Farbtasten = Angriff, Sprung, Zauber, Ausweichen).
+Selbst bauen: `npm run tv` → `dist/Blutmond-TV.zip`.
+
+> **Wichtig:** Die Datei `index.html` nicht per Doppelklick öffnen – Browser laden Spiele-Module nicht von der Festplatte. Immer über einen der Wege oben.
 
 > **Ton:** Browser erlauben Ton erst nach einem Klick oder Tastendruck. Am Titelbildschirm deshalb einmal **Enter** drücken oder klicken (manche Browser akzeptieren auch die A-Taste).
 

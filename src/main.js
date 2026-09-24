@@ -4,6 +4,7 @@
 import { Renderer } from './render/renderer.js';
 import { createRenderer } from './render/glrenderer.js';
 import { Input } from './core/input.js';
+import { IS_TV, tvSetup, tvExit } from './core/tv.js';
 import { AudioEngine, TRACKS } from './core/audio.js';
 import { Loop } from './core/loop.js';
 import { loadSettings, saveSettings, listSlots, loadSlot, lastSlot, newGameState, saveSlot, setLastSlot, storageAvailable } from './core/save.js';
@@ -26,6 +27,7 @@ class App {
     this.renderer.setScale(Renderer.scaleFor(this.settings.quality));
     this.renderer.onScaleChange = (s) => this.scene && this.scene.onScale && this.scene.onScale(s);
     this.input = new Input().attach(window);
+    tvSetup();
     const rumble = this.input.rumble.bind(this.input);
     this.input.rumble = (...a) => { if (this.settings.rumble) rumble(...a); };
     this.audio = new AudioEngine(this.settings);
@@ -188,8 +190,10 @@ class TitleScene {
     } });
     items.push({ label: 'Optionen', type: 'action', onSelect: () => { this.overlay = optionsMenu(app, () => { this.overlay = null; }); } });
     items.push({ label: 'Steuerung', type: 'action', onSelect: () => { this.overlay = new ControlsScreen(app, () => { this.overlay = null; }); } });
-    items.push({ label: 'Vollbild', type: 'action', desc: 'Oder die Taste F bzw. F11.', onSelect: () => app.toggleFullscreen() });
-    this.menu = new MenuScreen(app, { title: '', items, width: 760, backdrop: 0, footer: true });
+    if (IS_TV) items.push({ label: 'Beenden', type: 'action', desc: 'Zurück zum Fernseher.', onSelect: () => tvExit() });
+    else items.push({ label: 'Vollbild', type: 'action', desc: 'Oder die Taste F bzw. F11.', onSelect: () => app.toggleFullscreen() });
+    // Am Fernseher schließt „Zurück“ im Titelmenü die App (so erwartet es Samsung).
+    this.menu = new MenuScreen(app, { title: '', items, width: 760, backdrop: 0, footer: true, onCancel: IS_TV ? () => tvExit() : null });
     this.menu.draw = (ctx, W, H) => drawTitleMenu(ctx, W, H, this.menu, this.t);
   }
 
@@ -274,11 +278,11 @@ class TitleScene {
         ctx.textAlign = 'center';
         ctx.font = `600 42px ${FONT_HEAD}`;
         const dev = this.app.input.lastDevice === 'gamepad';
-        strokeText(ctx, dev ? 'Drücke A' : 'Drücke Enter oder klicke', W * 0.3, H * 0.74, '#ffe0e4');
+        strokeText(ctx, dev ? 'Drücke A' : IS_TV ? 'Drücke OK' : 'Drücke Enter oder klicke', W * 0.3, H * 0.74, '#ffe0e4');
         ctx.globalAlpha = 1;
         ctx.font = `italic 500 28px ${FONT_BODY}`;
         ctx.fillStyle = '#b89aa4';
-        ctx.fillText('Am besten mit Gamepad und im Vollbild (Taste F)', W * 0.3, H * 0.74 + 52);
+        ctx.fillText(IS_TV ? 'Am besten mit Gamepad – oder mit den Farbtasten der Fernbedienung' : 'Am besten mit Gamepad und im Vollbild (Taste F)', W * 0.3, H * 0.74 + 52);
         if (!storageAvailable()) { ctx.fillStyle = '#ff9a70'; ctx.fillText('Hinweis: Dieser Browser speichert nicht dauerhaft (Privatmodus?).', W * 0.3, H * 0.74 + 96); }
         return;
       }
@@ -348,6 +352,10 @@ function drawTitleMenu(ctx, W, H, menu, t) {
 
 // Start
 const canvas = document.getElementById('game');
+// Schriften gleich laden – die Leinwand fordert sie sonst erst an, wenn sie gebraucht werden.
+if (document.fonts) {
+  for (const f of ['700 20px "Cinzel Decorative"', '900 20px "Cinzel Decorative"', '600 20px Cinzel', '500 20px "EB Garamond"', 'italic 500 20px "EB Garamond"']) document.fonts.load(f).catch(() => {});
+}
 try {
   new App(canvas);
   document.getElementById('loading')?.remove();

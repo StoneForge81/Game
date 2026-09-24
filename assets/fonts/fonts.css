@@ -1,0 +1,7 @@
+/* Schriften liegen im Spiel selbst – so klappt es auch ohne Internet (Fernseher-App).
+   Cinzel, Cinzel Decorative, EB Garamond: SIL Open Font License 1.1 (Google Fonts), nur Latein-Zeichen. */
+@font-face { font-family: 'Cinzel'; font-style: normal; font-weight: 400 900; font-display: swap; src: url(cinzel.woff2) format('woff2'); }
+@font-face { font-family: 'Cinzel Decorative'; font-style: normal; font-weight: 700; font-display: swap; src: url(cinzel-decorative-700.woff2) format('woff2'); }
+@font-face { font-family: 'Cinzel Decorative'; font-style: normal; font-weight: 900; font-display: swap; src: url(cinzel-decorative-900.woff2) format('woff2'); }
+@font-face { font-family: 'EB Garamond'; font-style: normal; font-weight: 400 800; font-display: swap; src: url(eb-garamond.woff2) format('woff2'); }
+@font-face { font-family: 'EB Garamond'; font-style: italic; font-weight: 400 800; font-display: swap; src: url(eb-garamond-italic.woff2) format('woff2'); }

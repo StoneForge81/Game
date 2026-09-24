@@ -1,0 +1,35 @@
+# Baut nach jedem Merge die Samsung-Fernseher-App und stellt sie zum Herunterladen bereit:
+# https://github.com/StoneForge81/Game/releases/download/tv/Blutmond-TV.zip
+name: Fernseher-App bauen
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tv:
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: node tools/tizen-build.mjs
+      - name: Zip zum Herunterladen bereitstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Samsung-Fernseher-App (Tizen). Anleitung: TV-ANLEITUNG.md im Projekt. Stand: $(date -u '+%d.%m.%Y %H:%M') UTC, Commit ${GITHUB_SHA::7}."
+          if gh release view tv > /dev/null 2>&1; then
+            gh release edit tv --notes "$NOTES"
+          else
+            gh release create tv --title "Fernseher-App (Samsung)" --notes "$NOTES"
+          fi
+          gh release upload tv dist/Blutmond-TV.zip --clobber
