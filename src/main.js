@@ -2,7 +2,7 @@
 // Titelbildschirm und Spiel.
 
 import { Renderer } from './render/renderer.js';
-import { Input, glyph } from './core/input.js';
+import { Input } from './core/input.js';
 import { AudioEngine, TRACKS } from './core/audio.js';
 import { Loop } from './core/loop.js';
 import { loadSettings, saveSettings, listSlots, loadSlot, lastSlot, newGameState, saveSlot, setLastSlot, storageAvailable } from './core/save.js';
@@ -12,7 +12,7 @@ import { ZONES } from './data/zones.js';
 import { VIEW_W, VIEW_H } from './data/config.js';
 import { drawHumanoid, makePose, COSTUMES, Cloth, solveRig, drawEyesGlow } from './render/puppet.js';
 import { MenuScreen, ControlsScreen, optionsMenu, slotMenu, drawFooter } from './ui/menus.js';
-import { FONT_TITLE, FONT_BODY, FONT_HEAD, strokeText, drawGlyph } from './ui/text.js';
+import { FONT_TITLE, FONT_BODY, FONT_HEAD, strokeText } from './ui/text.js';
 import { Particles } from './render/particles.js';
 
 class App {
@@ -353,4 +353,3 @@ try {
   if (el) el.textContent = 'Fehler beim Start: ' + e.message;
   throw e;
 }
-void glyph; void drawGlyph;

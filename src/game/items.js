@@ -3,7 +3,7 @@
 
 import { Entity } from './entity.js';
 import { TAU, clamp, damp, dist } from '../core/math.js';
-import { drawHumanoid, makePose, COSTUMES, outlined, cel, smoothPath, P, drawEyesGlow } from '../render/puppet.js';
+import { drawHumanoid, makePose, COSTUMES, outlined, cel, smoothPath, P } from '../render/puppet.js';
 
 // === Basisklasse für Interaktionen =========================================
 
@@ -402,4 +402,3 @@ export class Throne extends Entity {
   light() { return { x: this.x, y: this.y - 30, radius: 200, color: this.freed ? 'rgb(255,80,100)' : 'rgb(255,240,200)', intensity: 1.4 }; }
 }
 
-void drawEyesGlow;

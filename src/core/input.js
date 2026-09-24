@@ -66,6 +66,7 @@ export class Input {
     this.padType = 'xbox';              // 'xbox' | 'playstation' | 'nintendo' | 'generic'
 
     this._down = new Set();             // rohe Tastencodes
+    this._held = new Set();             // nach consumeAll() noch gedrückt: zählt erst nach Loslassen wieder
     this._rumbleUntil = 0;
     this._enabled = true;
 
@@ -151,6 +152,13 @@ export class Input {
 
     if (padActive) this.lastDevice = 'gamepad';
 
+    // Nach einem Szenenwechsel noch gehaltene Tasten erzeugen keinen neuen
+    // Druck – sonst löst ein etwas länger gehaltenes A zwei Menüs hintereinander aus.
+    for (const a of this._held) {
+      if (this.state[a]) this.prev[a] = true;
+      else this._held.delete(a);
+    }
+
     // Digitale Eingaben ergeben eine Achse von genau -1/0/1;
     // der Analogstick liefert feinere Werte für sanftes Gehen.
     const digitalX = (this.state.right ? 1 : 0) - (this.state.left ? 1 : 0);
@@ -165,7 +173,10 @@ export class Input {
 
   /** Setzt alle Kanten zurück – nach Szenenwechseln, damit nichts "durchfällt". */
   consumeAll() {
-    for (const a of ACTIONS) this.prev[a] = this.state[a] = false;
+    for (const a of ACTIONS) {
+      if (this.state[a]) this._held.add(a);
+      this.prev[a] = this.state[a];
+    }
     this._down.clear();
   }
 

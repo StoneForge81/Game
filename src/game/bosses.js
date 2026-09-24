@@ -4,9 +4,9 @@
 // Ab 50 % Leben beginnt Phase 2: schneller, mehr Muster.
 
 import { Entity } from './entity.js';
-import { TAU, clamp, approach, damp, lerp } from '../core/math.js';
+import { TAU, clamp, approach, damp } from '../core/math.js';
 import { newAttackId, resolveAttack, rollDamage, impactFx } from './combat.js';
-import { makePose, blendPose, drawHumanoid, drawEyesGlow, COSTUMES, Cloth, solveRig, outlined, cel, smoothPath, P } from '../render/puppet.js';
+import { makePose, blendPose, drawHumanoid, drawEyesGlow, COSTUMES, Cloth, outlined, cel, smoothPath, P } from '../render/puppet.js';
 import { holyOrb, holyPillar, groundWave, waterWave, thrownSpear, bouncingGear, flyingBook, lightBlade, flameShot, Projectile } from './projectiles.js';
 import { BOSS_TITLES } from '../data/story.js';
 import { CHAR_SCALE } from '../data/config.js';
@@ -737,4 +737,3 @@ class Serafine extends Boss {
   light() { return { x: this.x, y: this.y - 24, radius: this.fly ? 200 : 120, color: 'rgb(255,240,200)', intensity: this.fly ? 1.4 : 0.9 }; }
 }
 
-void lerp; void solveRig;

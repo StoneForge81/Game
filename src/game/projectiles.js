@@ -3,9 +3,8 @@
 //
 // Alle teilen eine Klasse; `kind` bestimmt Aussehen und Sonderverhalten.
 
-import { TILE } from '../data/config.js';
 import { TAU, clamp, angleDelta } from '../core/math.js';
-import { newAttackId, resolveAttack, impactFx } from './combat.js';
+import { newAttackId, resolveAttack } from './combat.js';
 
 export class Projectile {
   constructor(o) {
@@ -347,5 +346,3 @@ export const lightBlade = (x, y, dir, speed = 300, damage = 20) =>
 export const flameShot = (x, y, a, speed = 200) =>
   new Projectile({ kind: 'flame', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, w: 8, h: 8, damage: 12, life: 2.5, gravity: 60 });
 
-void TILE;
-void impactFx;

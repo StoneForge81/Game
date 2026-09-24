@@ -1,6 +1,6 @@
 // Das laufende Spiel: verbindet Welt, Figuren, Kampf, Story und Anzeige.
 
-import { VIEW_W, VIEW_H, TILE, PLAYER } from '../data/config.js';
+import { VIEW_W, VIEW_H, TILE } from '../data/config.js';
 import { ZONES, ZONE_ORDER, ABILITY_INFO } from '../data/zones.js';
 import { SCENES, HINTS, LORE, CHECKPOINT_LINES, ENDINGS, pickEnding, PROLOGUE } from '../data/story.js';
 import { generateZone } from './levelgen.js';
@@ -962,4 +962,3 @@ class FamilyNPC extends Entity {
   }
 }
 
-void PLAYER;

@@ -5,9 +5,9 @@
 
 import { Entity } from './entity.js';
 import { PLAYER, PHYS, COST, HOLY, TILE } from '../data/config.js';
-import { approach, clamp, damp, TAU, lerp } from '../core/math.js';
+import { approach, clamp, damp } from '../core/math.js';
 import { T } from './tiles.js';
-import { newAttackId, resolveAttack, rollDamage, impactFx } from './combat.js';
+import { newAttackId, resolveAttack, rollDamage } from './combat.js';
 import { Cloth, makePose, blendPose, solveRig, drawHumanoid, drawEyesGlow, COSTUMES } from '../render/puppet.js';
 import { BloodLance } from './projectiles.js';
 

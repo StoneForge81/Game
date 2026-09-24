@@ -5,7 +5,7 @@
 // Unter 35 % Leben gehen sie einmal in die Knie: dann kannst du trinken.
 
 import { Entity } from './entity.js';
-import { TILE } from '../data/config.js';
+
 import { clamp, approach, TAU, dist } from '../core/math.js';
 import { newAttackId, resolveAttack, rollDamage, impactFx } from './combat.js';
 import { makePose, blendPose, drawHumanoid, drawEyesGlow, COSTUMES, outlined, cel, smoothPath, P } from '../render/puppet.js';

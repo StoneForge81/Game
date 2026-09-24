@@ -3,7 +3,7 @@
 // In Zwischensequenzen steht er als Junge neben dir.
 
 import { Entity } from './entity.js';
-import { TAU, damp, dist, clamp } from '../core/math.js';
+import { TAU, damp, dist } from '../core/math.js';
 import { drawHumanoid, makePose, COSTUMES, Cloth, solveRig, drawEyesGlow, outlined, cel, smoothPath, P } from '../render/puppet.js';
 import { Projectile } from './projectiles.js';
 import { CHAR_SCALE } from '../data/config.js';
@@ -126,4 +126,3 @@ export class Henry extends Entity {
   }
 }
 
-void clamp;
