@@ -230,6 +230,7 @@ export class Pickup extends Entity {
     this.kind = kind;
     this.itemId = opts.id || null;
     this.ability = opts.ability || null;
+    this.heal = opts.heal ?? 3;         // nur Blutkugeln
     this.solid = kind === 'bloodOrb';
     this.gravity = kind === 'bloodOrb' ? 600 : 0;
     this.vx = opts.vx ?? 0;

@@ -52,6 +52,9 @@ export function loadSettings() {
   if (!raw) return { ...DEFAULT_SETTINGS };
   try {
     const parsed = JSON.parse(raw);
+    // Früher gab es nur den Schalter „Leichter Modus“.
+    if (parsed.difficulty == null && parsed.assistMode) parsed.difficulty = 'leicht';
+    delete parsed.assistMode;
     // Unbekannte/fehlende Felder mit den Standardwerten auffüllen,
     // damit ein alter Stand nach einem Update nicht das Spiel zerlegt.
     return { ...DEFAULT_SETTINGS, ...parsed };

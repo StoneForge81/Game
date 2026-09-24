@@ -4,7 +4,7 @@
 // Angriffe (Klinge, Lanze, Klaue) laufen als "Aktion" über dem Normalzustand.
 
 import { Entity } from './entity.js';
-import { PLAYER, PHYS, COST, HOLY, TILE } from '../data/config.js';
+import { PLAYER, PHYS, COST, HOLY, TILE, difficultyOf } from '../data/config.js';
 import { approach, clamp, damp } from '../core/math.js';
 import { T } from './tiles.js';
 import { newAttackId, resolveAttack, rollDamage } from './combat.js';
@@ -406,8 +406,7 @@ export class Player extends Entity {
 
   hurt(game, amount, fromX, opts = {}) {
     if (this.invuln > 0 || this.state === 'dead' || this.state === 'drain' || this.locked) return false;
-    let dmg = amount;
-    if (game.settings.assistMode) dmg = Math.ceil(dmg * 0.5);
+    const dmg = Math.max(1, Math.round(amount * difficultyOf(game.settings).dmgTaken));
     this.hp -= dmg;
     this.flash = 1;
     this.invuln = PLAYER.invulnAfterHit;
@@ -554,7 +553,7 @@ export class Player extends Entity {
       if (this.holyTick <= 0) {
         this.holyTick = 0.2;
         let dmg = HOLY.damagePerSecond * 0.2 * (this.abilities.moonskin ? 0.5 : 1);
-        if (game.settings.assistMode) dmg *= 0.5;
+        dmg *= difficultyOf(game.settings).dmgTaken;
         this.hp -= dmg;
         this.flash = Math.max(this.flash, 0.6);
         game.audio.play('holyBurn', { x: this.x, gain: 0.7 });
@@ -617,8 +616,9 @@ export class Player extends Entity {
       const hand = this.rig.armF.hand;
       const ang = this.rig.armF.angle;
       const wa = this.pose.weaponAngle;
-      // Klinge zeigt vom Handgelenk weg; Richtung aus Unterarm + Schwungwinkel
-      const dirA = -ang + Math.PI / 2 + wa * 0.35;
+      // Klinge verlängert den Unterarm; weaponAngle kippt sie zusätzlich
+      // (Bogenmaß, positiv = im Uhrzeigersinn, also nach vorn-unten).
+      const dirA = -ang + Math.PI / 2 + wa;
       const len = this.action.def.heavy ? 26 : 22;
       const bx = this.x + this.facing * (hand.x + Math.cos(dirA) * 3), by = this.y + hand.y + Math.sin(dirA) * 3;
       const tx = this.x + this.facing * (hand.x + Math.cos(dirA) * len), ty = this.y + hand.y + Math.sin(dirA) * len;

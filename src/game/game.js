@@ -283,7 +283,7 @@ export class Game {
     switch (pk.kind) {
       case 'bloodOrb':
         p.gainBlood(6);
-        p.heal(3);
+        p.heal(pk.heal);
         this.audio.play('pickup', { x: pk.x, gain: 0.35 });
         break;
       case 'heartShard':

@@ -161,34 +161,36 @@ export function makePose(anim, t, opts = {}) {
       const windup = k < 0.25 ? k / 0.25 : 1;
       const swing = k < 0.25 ? 0 : clamp((k - 0.25) / 0.35, 0, 1);
       if (anim === 'attack1') {
-        // Waagerechter Schnitt
-        p.shF = lerp(lerp(0.3, -2.4, windup), 1.5, swing);
-        p.elF = lerp(0.6, 0.1, swing);
+        // Schräger Hieb von oben nach vorn. Winkel: 0 = unten, π/2 = vorn,
+        // π = oben. Der Bogen läuft über den Kopf (3,7 → 1,5) und bleibt
+        // damit vor dem Körper – nie hinter dem Rücken durch.
+        p.shF = lerp(lerp(0.3, 3.7, windup), 1.5, swing);
+        p.elF = lerp(-0.5, 0.1, swing);
         p.lean = lerp(-0.1, 0.35, swing);
         p.hipF = 0.5; p.kneeF = 0.5; p.hipB = -0.5; p.kneeB = 0.3;
-        p.weaponAngle = lerp(-2.2, 1.6, swing);
+        p.weaponAngle = lerp(0.5, 0.3, swing);
       } else if (anim === 'attack2') {
-        // Aufwärtsschnitt
-        p.shF = lerp(lerp(0.3, 1.2, windup), -2.6, swing);
-        p.elF = 0.2;
+        // Aufwärtsschnitt: von vorn-unten über vorn nach oben
+        p.shF = lerp(lerp(0.3, 0.7, windup), 2.9, swing);
+        p.elF = lerp(0.3, -0.1, swing);
         p.lean = lerp(0.3, -0.15, swing);
         p.hipF = 0.4; p.kneeF = 0.7; p.hipB = -0.4; p.kneeB = 0.3;
         p.crouch = lerp(0.25, 0, swing);
-        p.weaponAngle = lerp(1.4, -2.4, swing);
+        p.weaponAngle = lerp(0.2, -0.3, swing);
       } else if (anim === 'attack3') {
-        // Schwerer Stoß nach vorn
-        p.shF = lerp(lerp(0.2, -0.3, windup), -1.55, swing);
-        p.elF = lerp(1.6, 0, swing);
+        // Schwerer Stoß nach vorn: Arm zurückziehen, dann gerade durchstoßen
+        p.shF = lerp(lerp(0.2, -0.3, windup), 1.55, swing);
+        p.elF = lerp(lerp(0.2, 1.4, windup), 0, swing);
         p.lean = lerp(-0.2, 0.55, swing);
         p.hipF = lerp(0.2, 1.0, swing); p.kneeF = lerp(0.3, 0.7, swing);
         p.hipB = lerp(-0.2, -0.8, swing); p.kneeB = 0.2;
-        p.weaponAngle = -1.57;
+        p.weaponAngle = 0;
       } else {
-        // Luftangriff: Rundumschlag nach unten
-        p.shF = lerp(lerp(0, -2.8, windup), 1.2, swing);
+        // Luftangriff: großer Bogen über den Kopf nach vorn-unten
+        p.shF = lerp(lerp(0.3, 3.5, windup), 1.0, swing);
         p.elF = 0.2;
         p.hipF = 0.8; p.kneeF = 1.4; p.hipB = -0.1; p.kneeB = 0.9;
-        p.weaponAngle = lerp(-2.6, 1.8, swing);
+        p.weaponAngle = lerp(0.5, 0.4, swing);
       }
       p.shB = -0.6; p.elB = 0.9;
       p.weapon = k < 0.85 ? 1 : (1 - k) / 0.15;
