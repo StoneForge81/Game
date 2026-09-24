@@ -2,6 +2,7 @@
 // Titelbildschirm und Spiel.
 
 import { Renderer } from './render/renderer.js';
+import { createRenderer } from './render/glrenderer.js';
 import { Input } from './core/input.js';
 import { AudioEngine, TRACKS } from './core/audio.js';
 import { Loop } from './core/loop.js';
@@ -19,7 +20,9 @@ class App {
   constructor(canvas) {
     this.canvas = canvas;
     this.settings = loadSettings();
-    this.renderer = new Renderer(canvas, this.settings);
+    // ?engine=classic erzwingt den alten Renderer (Tests, Vergleich)
+    const forced = new URLSearchParams(location.search).get('engine');
+    this.renderer = createRenderer(canvas, forced ? { ...this.settings, engine: forced } : this.settings);
     this.renderer.setScale(Renderer.scaleFor(this.settings.quality));
     this.renderer.onScaleChange = (s) => this.scene && this.scene.onScale && this.scene.onScale(s);
     this.input = new Input().attach(window);
@@ -255,8 +258,8 @@ class TitleScene {
       ctx.beginPath();
       ctx.moveTo(fx - 90, VIEW_H); ctx.lineTo(fx - 60, fy + 4); ctx.lineTo(fx - 20, fy - 2); ctx.lineTo(fx + 30, fy + 2); ctx.lineTo(fx + 60, fy + 20); ctx.lineTo(fx + 110, VIEW_H);
       ctx.fill();
-      drawHumanoid(ctx, fx, fy, -1, this.pose, COSTUMES.ingomar, { cape: this.cape, hair: this.hair, sz: 1.25 });
     });
+    r.actors((ctx) => drawHumanoid(ctx, fx, fy, -1, this.pose, COSTUMES.ingomar, { cape: this.cape, hair: this.hair, sz: 1.25 }));
     r.compositeWorld();
     r.emissive((ctx, isGlow) => {
       drawEyesGlow(ctx, fx, fy, -1, solveRig(this.pose, 1.12 * 1.25), '#ff1f35', isGlow, 1.25);

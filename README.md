@@ -84,9 +84,11 @@ Durch Plattformen fallen: **unten + Springen**. Die Tastensymbole im Spiel passe
 
 ## Technik (für Neugierige)
 
-- Reines JavaScript mit ES-Modulen und Canvas 2D, keine Bibliotheken, kein Build-Schritt.
+- Reines JavaScript mit ES-Modulen, **WebGL2** und Canvas 2D, keine Bibliotheken, kein Build-Schritt.
 - **Alles prozedural:** Figuren, Kulissen und Effekte werden im Code gezeichnet (Tuschekontur, Cel-Shading, Stoffsimulation für Umhang und Haare), der komplette **Soundtrack und alle Geräusche** werden live mit der Web Audio API synthetisiert – keine einzige Bild- oder Audiodatei.
-- Licht mit Schattenwurf, Bloom, gemalte Gegenlicht-Kulissen pro Gebiet.
+- **WebGL-Renderer** (Standard): Die Grafikkarte berechnet jedes Licht pro Pixel mit weichen Schatten, Relief- und Kantenlicht auf Mauern und Figuren, Figurenschatten, Lichtstrahlen und leuchtenden Dunst, HDR-Bloom und eine filmische Tonkurve.
+- Ohne WebGL2 (alte Fernseher-Browser) schaltet das Spiel automatisch auf den klassischen Canvas-2D-Renderer um. Umstellen geht auch von Hand unter *Optionen → Grafik-Engine*.
+- Gemalte Gegenlicht-Kulissen pro Gebiet.
 - Levels entstehen deterministisch aus Ablaufplänen pro Gebiet; ein Prüfprogramm beweist, dass jede Stelle mit den Kräften erreichbar ist, die man dort schon hat.
 
 ### Tests

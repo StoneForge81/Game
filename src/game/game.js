@@ -871,6 +871,8 @@ export class Game {
       this.tiles.drawFront(ctx, view);
       for (const d of this.level.deco) if (inView(d, 120)) drawDeco(ctx, d, t, this.zone);
       this.particles.drawDecals(ctx, view);
+    });
+    r.actors((ctx) => {
       for (const o of this.objects) if (!(o instanceof Pickup) && inView(o)) o.draw(ctx, this);
       for (const e of this.enemies) if (inView(e, 120)) e.draw(ctx, this);
       this.henry.draw(ctx, this);
