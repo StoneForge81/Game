@@ -1,0 +1,16 @@
+{
+  "name": "blutmond",
+  "version": "1.0.0",
+  "description": "Blutmond – ein gotisches 2.5D-Actionspiel im Stil von Castlevania. Du bist der Vampirfürst.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "validate": "node tools/validate-levels.mjs",
+    "test": "node tools/validate-levels.mjs && node tools/smoke-test.mjs",
+    "screenshots": "node tools/screenshots.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
