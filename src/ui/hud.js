@@ -65,7 +65,7 @@ export class HUD {
     if (game.boss && game.boss.state !== 'wait' && game.boss.state !== 'dead') this._drawBoss(ctx, W, H, game.boss);
     this._drawPrompt(ctx, game);
     this._drawBubble(ctx, game);
-    this._drawToasts(ctx, W);
+    this._drawToasts(ctx, W, !!(game.boss && game.boss.state === 'fight'));
     if (this.title) this._drawTitle(ctx, W, H);
     if (this.banner) this._drawBanner(ctx, W, H);
   }
@@ -162,13 +162,14 @@ export class HUD {
   // --- Boss --------------------------------------------------------------------
 
   _drawBoss(ctx, W, H, boss) {
-    const w = 1100, h = 30, x = W / 2 - w / 2, y = H - 120;
+    // Oben rechts neben der eigenen Anzeige – unten steht der Vampir.
+    const w = 960, h = 30, x = W - w - 70, y = 96;
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = `700 44px ${FONT_TITLE}`;
-    strokeText(ctx, boss.info.name, W / 2, y - 48, '#ffe8c0');
+    strokeText(ctx, boss.info.name, x + w / 2, y - 40, '#ffe8c0');
     ctx.font = `500 26px ${FONT_BODY}`;
-    strokeText(ctx, boss.info.title, W / 2, y - 16, '#c9a8a0', 'rgba(0,0,0,0.8)', 5);
+    strokeText(ctx, boss.info.title, x + w / 2, y + h + 44, '#c9a8a0', 'rgba(0,0,0,0.8)', 5);
     ctx.fillStyle = 'rgba(8,4,10,0.9)';
     roundRect(ctx, x - 6, y - 2, w + 12, h + 12, 6); ctx.fill();
     ctx.strokeStyle = '#c9a048'; ctx.lineWidth = 3; ctx.stroke();
@@ -248,9 +249,9 @@ export class HUD {
     ctx.restore();
   }
 
-  _drawToasts(ctx, W) {
+  _drawToasts(ctx, W, bossBar) {
     ctx.save();
-    let y = 90;
+    let y = bossBar ? 240 : 90;
     for (const t of this.toasts) {
       const a = clamp(Math.min(t.t * 4, (4 - t.t) * 2), 0, 1);
       ctx.globalAlpha = a;

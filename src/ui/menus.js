@@ -478,9 +478,10 @@ export class EndingScreen {
         ['Henry', 'als Prinz Henry'],
         ['Renate', 'als Oma Renate'],
         ['Egon', 'als Opa Egon'],
+        ['Ines & Matthias', 'als die Chronisten von Ingopolis'],
       ];
       cast.forEach(([n, r], i) => {
-        const y = 360 + i * 70;
+        const y = 350 + i * 62;
         ctx.font = `700 46px ${FONT_TITLE}`; ctx.textAlign = 'right'; strokeText(ctx, n, W / 2 - 20, y, '#f4e0d0');
         ctx.font = `italic 500 38px ${FONT_BODY}`; ctx.textAlign = 'left'; ctx.fillStyle = '#c8b0bc'; ctx.fillText(r, W / 2 + 20, y);
       });

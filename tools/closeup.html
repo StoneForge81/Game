@@ -9,7 +9,7 @@ const ctx = document.getElementById('c').getContext('2d');
 const g = ctx.createLinearGradient(0, 0, 0, 720);
 g.addColorStop(0, '#f2b34a'); g.addColorStop(1, '#8a3a12');
 ctx.fillStyle = g; ctx.fillRect(0, 0, 1280, 720);
-const S = 8;
+const S = 9;
 function show(name, anim, x, y, opts = {}) {
   ctx.save(); ctx.scale(S, S);
   const fx = x / S, fy = y / S, f = opts.facing ?? 1;
@@ -27,10 +27,8 @@ function show(name, anim, x, y, opts = {}) {
   if (c.eyes) drawEyesGlow(ctx, fx, fy, f, rig, c.eyes, false);
   ctx.restore();
 }
-show('ingomar', 'idle', 170, 560);
-show('yvonne', 'idle', 390, 560, { facing: -1 });
-show('renate', 'idle', 620, 560);
-show('egon', 'idle', 840, 560);
-show('henry', 'idle', 1070, 560, { facing: -1, sz: 0.78 });
+show('matthias', 'idle', 330, 600);
+show('ines', 'idle', 620, 600, { facing: -1 });
+show('ingomar', 'idle', 950, 600, { facing: -1 });
 window.__ready = true;
 </script></body></html>

@@ -22,6 +22,8 @@ export const SPEAKERS = {
   egon:       { name: 'Opa Egon',                  color: '#e0c890', side: 'right' },
   narrator:   { name: '',                          color: '#d8d0e0', side: 'none' },
   prisoner:   { name: 'Gefangener',                color: '#d8c0a8', side: 'right' },
+  ines:       { name: 'Ines',                      color: '#c8b8e8', side: 'right' },
+  matthias:   { name: 'Matthias',                  color: '#e8d090', side: 'right' },
   ambrosius:  { name: 'Bruder Ambrosius',          color: '#f0c860', side: 'right' },
   mirella:    { name: 'Schwester Mirella',         color: '#90c8ff', side: 'right' },
   isolde:     { name: 'Isolde von Hagen',          color: '#ff9a5a', side: 'right' },
@@ -112,6 +114,24 @@ export const SCENES = {
     { who: 'henry', text: 'Und neue geschrieben. Über dich, Vater.' },
     { who: 'yvonne', text: 'Sie wissen alles über dich, Liebster. Alles außer dem, was zählt.' },
   ],
+  // Die Chronisten von Ingopolis haben sich zwischen den Regalen versteckt.
+  'bibliothek.archivists': [
+    { who: 'matthias', text: 'Nicht beißen! Wir sind keine Jäger! Wir sind … Chronisten!' },
+    { who: 'ines', text: 'Matthias, er beißt nicht. Jedenfalls nicht uns. – Fürst Ingomar. Wir haben auf Euch gewartet.' },
+    { who: 'ingomar', text: 'Zwei Menschen aus Ingopolis, versteckt in meiner Bibliothek. Erklärt euch.' },
+    { who: 'ines', text: 'Ich bin Ines, das ist Matthias. Wir schreiben die Chronik von Ingopolis. Die echte – nicht die, die der Orden predigt.' },
+    { who: 'matthias', text: 'Und wir haben Kapitel neun geschrieben. Das, was dem Skriptor noch fehlt. Mit Bleistift – falls wir uns vertun.' },
+    { who: 'ingomar', text: 'Und was steht darin?' },
+    { who: 'ines', text: 'Dass Ihr liebt. Und wer liebt, kommt immer zurück. Malachias hat das nie verstanden.' },
+    { who: 'matthias', text: 'Hier. Die Karte von Ingonesien. Jeder Gang, jede Kammer, jedes Versteck in Eurem Schloss. Hat uns nur vierzig Jahre gekostet.' },
+    { who: 'ingomar', text: 'Ihr seid mutiger als der halbe Orden.' },
+    { who: 'ines', text: 'Wir sind nur neugierig. Und jetzt geht – Yvonne wartet. Wir schreiben mit.' },
+  ],
+  'bibliothek.archivists.again': [
+    { who: 'matthias', text: 'Kapitel zehn wird spannend. Ich spitze schon mal den Bleistift.' },
+    { who: 'ines', text: 'Viel Glück, Fürst. Die Chronik von Ingopolis braucht ein gutes Ende.' },
+  ],
+
   'bibliothek.boss.intro': [
     { who: 'malachias', text: 'Ah. Der Gegenstand meiner Forschung. Persönlich.' },
     { who: 'malachias', text: 'Ich kenne jede deiner Schwächen, Ingomar. Ich habe sie aufgeschrieben. Kapitel sieben: Licht. Kapitel acht: Silber.' },
@@ -237,6 +257,7 @@ export const HINTS = {
   'hint.knight': 'Der Ritter blockt von vorn! Spring hinter ihn – oder nimm die Lanze!',
   'hint.lowBlood': 'Dein Blut ist fast leer. Trink aus einem Gegner, der in die Knie geht!',
   'hint.secret': 'Hier stimmt was nicht … Hinter dieser Wand ist etwas!',
+  'hint.archivists': 'Da versteckt sich jemand hinter den Regalen … Menschen! Sprich sie an, Vater. Mit {drain}.',
 };
 
 /** Tagebücher und Briefe der Jäger – sie zeigen dich, wie der Orden dich sieht. */
@@ -320,6 +341,7 @@ export const ENDINGS = {
       'Das Sonnenwerk erlischt, und die Nacht kehrt nach Ingonesien zurück.',
       'Am nächsten Abend steigen die Bürger von Ingopolis mit Fackeln den Berg hinauf. Nicht um zu brennen, sondern um zu knien. Unter ihnen der Bäcker.',
       'Man sagt, in Ingonesien fürchtet man die Nacht nicht mehr. Man fürchtet nur, sie zu enttäuschen.',
+      'Ines und Matthias schreiben alles auf. Die Chronik von Ingopolis bekommt ein neues Kapitel – mit Tinte diesmal.',
       'Und jeden Sonntag gibt es auf Schloss Nachtfels frisches Brot. Oma Renate besteht darauf.',
     ],
   },

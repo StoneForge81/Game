@@ -157,6 +157,38 @@ function drawCage(ctx, x, y) {
   for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(x + i * 5 + 0.5, y); ctx.lineTo(x + i * 5 + 0.5, y - 40); ctx.stroke(); }
 }
 
+// === Ines und Matthias, die Chronisten von Ingopolis ========================
+
+export class Archivists extends Interactable {
+  constructor(def) {
+    super(def.x, def.y, 60, 30);
+    this.prompt = 'Ansprechen';
+    this.range = 44;
+    this.talked = false;
+  }
+  interact(game) { game.talkToArchivists(this); }
+  draw(ctx, game) {
+    const p = game.player;
+    const x = this.x, y = this.y;
+    // Schreibpult mit Papierstapeln
+    outlined(ctx, x, y, 1, (c) => {
+      const desk = new Path2D(); desk.rect(x - 14, y - 15, 28, 3); desk.rect(x - 12, y - 12, 2.5, 12); desk.rect(x + 9.5, y - 12, 2.5, 12);
+      cel(c, desk, '#6a4428', '#3a2414', 0.4, -0.4, '#9a6a40');
+      c.fillStyle = '#f4ecd8'; c.fillRect(x - 10, y - 17.5, 9, 2.5); c.fillRect(x + 2, y - 16.8, 8, 1.8);
+      c.fillStyle = 'rgba(60,40,20,0.5)'; c.fillRect(x - 9, y - 17, 7, 0.4); c.fillRect(x + 3, y - 16.4, 6, 0.4);
+    }, { box: 50, footAt: 0.8 });
+    const fM = p.x < x - 20 ? -1 : 1, fI = p.x < x + 20 ? -1 : 1;
+    drawHumanoid(ctx, x - 20, y, fM, makePose('idle', this.age + 0.6), COSTUMES.matthias, { t: this.age });
+    drawHumanoid(ctx, x + 20, y, fI, makePose('idle', this.age), COSTUMES.ines, { sz: 0.96, t: this.age });
+  }
+  drawEmissive(ctx, game, isGlow) {
+    if (this.talked) return;
+    const k = 0.5 + 0.5 * Math.sin(this.age * 3);
+    ctx.fillStyle = isGlow ? `rgba(255,220,140,${0.6 * k})` : `rgba(255,240,200,${0.8 * k})`;
+    ctx.beginPath(); ctx.arc(this.x, this.y - 48 - k * 2, isGlow ? 7 : 1.8, 0, TAU); ctx.fill();
+  }
+}
+
 // === Schriften: Tagebücher und Briefe ======================================
 
 export class LorePoint extends Interactable {

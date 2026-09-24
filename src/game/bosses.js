@@ -597,12 +597,12 @@ class Cogliostro extends Boss {
     if (this.state === 'dead') return;
     // Glühender Kesselkern und Dampf
     const x = this.x + this.facing * 8, y = this.y - 36;
-    ctx.fillStyle = isGlow ? 'rgba(255,170,60,0.9)' : '#ffe0a0';
-    ctx.beginPath(); ctx.arc(x, y, isGlow ? 12 : 3.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = isGlow ? 'rgba(255,150,40,0.55)' : '#ffd080';
+    ctx.beginPath(); ctx.arc(x, y, isGlow ? 8 : 3, 0, TAU); ctx.fill();
     if (Math.random() < 0.3) game.particles.spawn({ kind: 'soft', x: this.x - this.facing * 15, y: this.y - 74, vx: 0, vy: -40, life: 0.8, size: 3, size1: 9, color: '#d8d8d8', alpha: 0.35 });
     super.drawEmissive(ctx, game, isGlow);
   }
-  light() { return { x: this.x, y: this.y - 40, radius: 140, color: 'rgb(255,180,90)', intensity: 1.0 }; }
+  light() { return { x: this.x, y: this.y - 40, radius: 120, color: 'rgb(255,170,90)', intensity: 0.45 }; }
 }
 
 // === Großinquisitorin Serafine Sonnenschwur ================================

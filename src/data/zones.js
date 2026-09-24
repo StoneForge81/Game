@@ -120,7 +120,7 @@ export const ZONES = {
     reward: 'wolf',
     height: 58,
     beats: [
-      'arrive', 'corridor', 'tower', 'lore', 'checkpoint', 'batGap', 'corridor',
+      'arrive', 'corridor', 'tower', 'lore', 'archivists', 'checkpoint', 'batGap', 'corridor',
       'prisoner', 'holyCorridor', 'tower', 'mistGate', 'arena', 'checkpoint',
       'lore', 'corridor', 'bossGate', 'boss', 'exit',
     ],

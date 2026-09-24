@@ -153,7 +153,7 @@ for (let zi = 0; zi < ZONE_ORDER.length; zi++) {
   // Pflichtziele
   const must = [];
   for (const e of level.entities) {
-    if (['checkpoint', 'exit', 'throne', 'prisoner', 'lore', 'bossDoor'].includes(e.type)) must.push(e);
+    if (['checkpoint', 'exit', 'throne', 'prisoner', 'lore', 'bossDoor', 'archivists'].includes(e.type)) must.push(e);
   }
   if (level.bossArena) must.push({ type: 'bossArena', x: level.bossArena.x + level.bossArena.w / 2, y: level.bossArena.floorY });
   let mustOk = 0;

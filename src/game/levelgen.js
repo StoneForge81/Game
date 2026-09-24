@@ -500,6 +500,19 @@ const BEATS = {
     b.deco.push({ type: 'chains', x: b.wx(x0 + 10), y: b.wy(b.fy - 8), h: 90 });
   },
 
+  // Ines und Matthias an ihrem Schreibpult zwischen den Regalen.
+  archivists(b) {
+    const x0 = b.room(20, 9);
+    const fy = b.groundAt(x0 + 10);
+    b.entities.push({ type: 'archivists', x: b.wx(x0 + 10), y: b.wy(fy) });
+    b.triggers.push({ kind: 'hint', id: 'hint.archivists', x: b.wx(x0), y: b.wy(b.fy - 9), w: b.wx(5), h: b.wy(9), once: true });
+    b.deco.push({ type: 'shelf', x: b.wx(x0 + 2), y: b.wy(fy), w: TILE * 3, h: TILE * 5 });
+    b.deco.push({ type: 'shelf', x: b.wx(x0 + 15), y: b.wy(fy), w: TILE * 3, h: TILE * 5 });
+    b.candle(x0 + 8, fy);
+    b.candle(x0 + 13, fy);
+    b.lights.push({ x: b.wx(x0 + 10), y: b.wy(fy) - 30, radius: 130, color: 'rgb(255,200,130)', intensity: 1.1, flicker: 0.2 });
+  },
+
   lore(b) {
     const x0 = b.room(14, 9);
     b.lorePoint(x0 + 7);

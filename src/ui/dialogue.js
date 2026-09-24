@@ -21,6 +21,7 @@ const CHOICES = {
 
 const PORTRAIT_COSTUME = {
   ingomar: 'ingomar', henry: 'henry', yvonne: 'yvonne', renate: 'renate', egon: 'egon', prisoner: 'prisoner',
+  ines: 'ines', matthias: 'matthias',
   ambrosius: 'ambrosius', mirella: 'mirella', isolde: 'isolde', malachias: 'malachias', cogliostro: 'cogliostro', serafine: 'serafine',
 };
 

@@ -535,6 +535,23 @@ export const COSTUMES = {
     eyes: '#ff1f35', body: 'robe', headwear: 'circlet', hairStyle: 'lord', ears: true, width: 1.0,
     cape: true, capeColor: '#2a0a14', capeShade: '#14040a', liningColor: '#b01330', liningShade: '#6c0719',
   },
+  // Die Chronisten von Ingopolis
+  matthias: {
+    skin: '#ecc8b0', skinShade: '#b8927c', skinL: '#fff0e4',
+    coat: '#c2aa8a', coatShade: '#8a7458', coatL: '#e8d8bc', trim: '#d0b030', trimShade: '#8a7418',
+    pants: '#4a4038', pantsShade: '#2e2822', boots: '#3a2e24', bootsShade: '#221a12',
+    hair: '#6a4a34', hairShade: '#3e2a1c', hairL: '#9a7a60',
+    eyes: null, body: 'longcoat', headwear: 'none', hairStyle: 'short', brows: 'raised',
+    shirtCollar: '#d4b830', width: 1.0, weapon: 'pencil',
+  },
+  ines: {
+    skin: '#f2d4c4', skinShade: '#c0a092', skinL: '#fff4ee',
+    coat: '#26222c', coatShade: '#121016', coatL: '#4a4454', trim: '#5a5264', trimShade: '#2e2a36',
+    pants: '#1e1a22', pantsShade: '#100e12', boots: '#1a161c', bootsShade: '#0c0a0e',
+    hair: '#8a6a50', hairShade: '#5a4430', hairL: '#b8987a',
+    eyes: null, body: 'robe', headwear: 'bun', glasses: '#8a6e6a', earrings: true, lace: true, width: 1.0,
+    weapon: 'papers',
+  },
   // Bosse
   ambrosius: {
     skin: '#dcae90', skinShade: '#a07a62',
@@ -916,10 +933,12 @@ function drawBody(ctx, rig, pose, c, sz, w, extra) {
     ctx.fillRect(0, -0.9 * sz, hw * 2, 1.9 * sz);
     ctx.fillStyle = c.trim; ctx.fillRect(hw * 1.1, -1.1 * sz, 1.6 * sz, 2.2 * sz);
     ctx.restore();
-    // Patronengurt über die Brust
-    const s0 = along(shoulder, ax, sw * 0.7, -0.5 * sz), s1 = along(hip, ax, -hw * 0.8, 3 * sz);
-    ctx.strokeStyle = c.trimShade || '#3a2a18'; ctx.lineWidth = 1.2 * sz;
-    ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.lineTo(s1.x, s1.y); ctx.stroke();
+    // Patronengurt über die Brust – nur bei den Jägern
+    if (c.weapon === 'crossbow' || c.weapon === 'spear') {
+      const s0 = along(shoulder, ax, sw * 0.7, -0.5 * sz), s1 = along(hip, ax, -hw * 0.8, 3 * sz);
+      ctx.strokeStyle = c.trimShade || '#3a2a18'; ctx.lineWidth = 1.2 * sz;
+      ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.lineTo(s1.x, s1.y); ctx.stroke();
+    }
   } else if (c.body === 'armor') {
     // Brustplatte: Glanzlicht, Mittelgrat, Emblem
     const ridge0 = along(shoulder, ax, sw * 0.35, -1 * sz), ridge1 = along(hip, ax, hw * 0.3, 3 * sz);
@@ -959,6 +978,36 @@ function drawBody(ctx, rig, pose, c, sz, w, extra) {
       P(hip.x + 1.5, hip.y + 6 * sz, true), P(hip.x + hw, hip.y + 2 * sz, true), P(hip.x + hw, hip.y, true),
     ]);
     cel(ctx, r, c.coatShade, shadeColor(c.coatShade, 0.7), 0.4, -0.3);
+  }
+
+  // Hemdkragen unter dem Mantel (Matthias: senfgelbes Polo unter beigem Strick)
+  if (c.shirtCollar) {
+    const n = rig.neck;
+    const col = smoothPath([P(n.x - 1.8 * sz, n.y + 0.6 * sz), P(n.x + 2.4 * sz, n.y + 0.4 * sz, true), P(n.x + 1.2 * sz, n.y + 2.8 * sz, true), P(n.x - 0.4 * sz, n.y + 1.6 * sz)]);
+    cel(ctx, col, c.shirtCollar, shadeColor(c.shirtCollar, 0.7), 0.3, -0.3);
+    // Reißverschluss des Strickmantels
+    const z0 = along(shoulder, ax, sw * 0.4, -0.5 * sz), z1 = along(hip, ax, hw * 0.4, 1 * sz);
+    ctx.strokeStyle = '#8a7a64'; ctx.lineWidth = 0.35 * sz;
+    ctx.beginPath(); ctx.moveTo(z0.x, z0.y); ctx.lineTo(z1.x, z1.y); ctx.stroke();
+    ctx.fillStyle = '#d8d0c0'; ctx.fillRect(z0.x - 0.4 * sz, z0.y, 0.8 * sz, 1.4 * sz);
+    // Strickstruktur
+    ctx.strokeStyle = 'rgba(90,70,50,0.25)'; ctx.lineWidth = 0.25 * sz;
+    for (let k = 1; k < 5; k++) {
+      const a0 = along(shoulder, ax, -sw * 0.9, -k * 2.2 * sz), a1 = along(shoulder, ax, sw * 0.9, -k * 2.2 * sz);
+      ctx.beginPath(); ctx.moveTo(a0.x, a0.y); ctx.lineTo(a1.x, a1.y); ctx.stroke();
+    }
+  }
+  // Spitzenärmel-Andeutung am Kleid (Ines)
+  if (c.lace && c.body === 'robe') {
+    ctx.strokeStyle = 'rgba(120,110,130,0.55)'; ctx.lineWidth = 0.3 * sz;
+    for (let k = 0; k < 4; k++) {
+      const q = along(shoulder, ax, sw * (0.2 + k * 0.18), -1.2 * sz);
+      ctx.beginPath(); ctx.arc(q.x, q.y, 0.7 * sz, 0, TAU); ctx.stroke();
+    }
+    // V-Ausschnitt
+    const v0 = along(shoulder, ax, sw * 0.1, -0.2 * sz), v1 = along(shoulder, ax, sw * 0.55, -3.2 * sz), v2 = along(shoulder, ax, sw * 0.9, -0.2 * sz);
+    ctx.fillStyle = c.skin;
+    ctx.beginPath(); ctx.moveTo(v0.x, v0.y); ctx.lineTo(v1.x, v1.y); ctx.lineTo(v2.x, v2.y); ctx.closePath(); ctx.fill();
   }
 
   // Schultertuch (Oma Renate)
@@ -1166,6 +1215,17 @@ function drawHead(ctx, rig, c, sz, extra) {
     ctx.moveTo(head.x + hr * 0.2, head.y - hr * 1.1); ctx.quadraticCurveTo(head.x - hr * 0.6, head.y - hr * 0.8, head.x - hr * 0.9, head.y + hr * 0.2);
     ctx.moveTo(head.x - hr * 0.2, head.y - hr * 1.25); ctx.quadraticCurveTo(head.x - hr * 1.0, head.y - hr * 0.9, head.x - hr * 1.15, head.y - hr * 0.1);
     ctx.stroke();
+  } else if (c.hairStyle === 'short') {
+    const top = smoothPath([
+      P(head.x + hr * 0.95, head.y - hr * 0.45, true), P(head.x + hr * 0.7, head.y - hr * 1.2),
+      P(head.x - hr * 0.3, head.y - hr * 1.32), P(head.x - hr * 1.12, head.y - hr * 0.6),
+      P(head.x - hr * 1.0, head.y + hr * 0.3, true), P(head.x - hr * 0.55, head.y + hr * 0.05),
+      P(head.x - hr * 0.2, head.y - hr * 0.55), P(head.x + hr * 0.4, head.y - hr * 0.72, true),
+    ]);
+    cel(ctx, top, c.hair, c.hairShade, 0.4 * sz, -0.4 * sz, c.hairL);
+    // Graue Schläfe
+    ctx.fillStyle = 'rgba(200,190,180,0.55)';
+    ctx.beginPath(); ctx.ellipse(head.x - hr * 0.55, head.y - hr * 0.05, hr * 0.22, hr * 0.3, 0, 0, TAU); ctx.fill();
   } else if (c.hairStyle === 'bald' && c.mustache) {
     // Opa Egons weißer Schnurrbart und Haarkranz
     const ring = smoothPath([P(head.x - hr * 0.2, head.y - hr * 0.2), P(head.x - hr * 1.05, head.y - hr * 0.5), P(head.x - hr * 1.0, head.y + hr * 0.5), P(head.x - hr * 0.4, head.y + hr * 0.4)]);
@@ -1180,6 +1240,11 @@ function drawHead(ctx, rig, c, sz, extra) {
     cel(ctx, beard, c.hair, c.hairShade, 0.5, -0.4);
   }
 
+  // Hochgezogene Brauen (Matthias' skeptischer Blick)
+  if (c.brows === 'raised') {
+    ctx.strokeStyle = c.hairShade; ctx.lineWidth = 0.42 * sz; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(head.x + hr * 0.3, head.y - hr * 0.4); ctx.quadraticCurveTo(head.x + hr * 0.6, head.y - hr * 0.62, head.x + hr * 0.88, head.y - hr * 0.42); ctx.stroke();
+  }
   // Augen
   if (c.eyes && c.headwear !== 'visor' && c.headwear !== 'goggles' && c.headwear !== 'skull') {
     ctx.fillStyle = '#ffffff';
@@ -1189,6 +1254,22 @@ function drawHead(ctx, rig, c, sz, extra) {
   } else if (!['hood', 'helmet', 'visor', 'mask', 'skull', 'goggles'].includes(c.headwear)) {
     ctx.fillStyle = '#1a1210';
     ctx.beginPath(); ctx.ellipse(head.x + hr * 0.55, head.y - hr * 0.06, hr * 0.13, hr * 0.13, 0, 0, TAU); ctx.fill();
+  }
+  // Runde Brille (Ines)
+  if (c.glasses) {
+    ctx.strokeStyle = c.glasses; ctx.lineWidth = 0.38 * sz;
+    ctx.fillStyle = 'rgba(220,235,255,0.22)';
+    ctx.beginPath(); ctx.arc(head.x + hr * 0.6, head.y - hr * 0.06, hr * 0.33, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(head.x + hr * 0.27, head.y - hr * 0.1); ctx.lineTo(head.x - hr * 0.35, head.y - hr * 0.2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillRect(head.x + hr * 0.62, head.y - hr * 0.26, hr * 0.12, hr * 0.08);
+  }
+  // Tropfenförmige Ohrringe
+  if (c.earrings) {
+    ctx.strokeStyle = '#c8c0d0'; ctx.lineWidth = 0.2 * sz;
+    ctx.beginPath(); ctx.moveTo(head.x - hr * 0.3, head.y + hr * 0.35); ctx.lineTo(head.x - hr * 0.3, head.y + hr * 0.75); ctx.stroke();
+    ctx.fillStyle = 'rgba(230,240,255,0.9)';
+    ctx.beginPath(); ctx.moveTo(head.x - hr * 0.3, head.y + hr * 0.7); ctx.lineTo(head.x - hr * 0.16, head.y + hr * 1.0); ctx.lineTo(head.x - hr * 0.3, head.y + hr * 1.18); ctx.lineTo(head.x - hr * 0.44, head.y + hr * 1.0); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
 }
@@ -1454,6 +1535,25 @@ function drawWeapon(ctx, arm, c, pose, sz, extra) {
       cel(ctx, bk, '#7a2218', '#4a120c', 0.4, -0.4);
       ctx.fillStyle = '#f0e4c8'; ctx.fillRect(-0.5 * sz, -2.6 * sz, 6 * sz, 1 * sz);
       ctx.fillStyle = c.trim; ctx.fillRect(2 * sz, -1.4 * sz, 2 * sz, 2 * sz);
+      break;
+    }
+    case 'pencil': {
+      // Gelb-schwarz gestreifter Bleistift – ein Gruß vom Küchentisch
+      ctx.rotate(-a + Math.PI * 0.35);
+      for (let k = 0; k < 5; k++) { ctx.fillStyle = k % 2 ? '#1a1a1a' : '#f0c820'; ctx.fillRect(-0.45 * sz, -1 * sz + k * 1.6 * sz, 0.9 * sz, 1.6 * sz); }
+      ctx.fillStyle = '#e8c89a';
+      ctx.beginPath(); ctx.moveTo(-0.45 * sz, 7 * sz); ctx.lineTo(0.45 * sz, 7 * sz); ctx.lineTo(0, 8.6 * sz); ctx.fill();
+      ctx.fillStyle = '#333'; ctx.beginPath(); ctx.moveTo(-0.15 * sz, 8.1 * sz); ctx.lineTo(0.15 * sz, 8.1 * sz); ctx.lineTo(0, 8.6 * sz); ctx.fill();
+      break;
+    }
+    case 'papers': {
+      ctx.rotate(0.15);
+      for (let k = 0; k < 3; k++) {
+        ctx.fillStyle = k === 2 ? '#fbf6ea' : '#e8e0cc';
+        ctx.fillRect(-1 * sz + k * 0.4 * sz, -4 * sz + k * 0.3 * sz, 6 * sz, 7.5 * sz);
+      }
+      ctx.fillStyle = 'rgba(60,50,40,0.6)';
+      for (let k = 0; k < 5; k++) ctx.fillRect(0.2 * sz, -3 * sz + k * 1.3 * sz, 4.4 * sz, 0.35 * sz);
       break;
     }
     case 'lantern': {

@@ -10,7 +10,7 @@ import { Player } from './player.js';
 import { Enemy } from './enemies.js';
 import { createBoss } from './bosses.js';
 import { Henry } from './henry.js';
-import { Checkpoint, StartCoffin, Prisoner, LorePoint, Pickup, Door, Exit, Throne } from './items.js';
+import { Checkpoint, StartCoffin, Prisoner, LorePoint, Pickup, Door, Exit, Throne, Archivists } from './items.js';
 import { Entity } from './entity.js';
 import { Particles } from '../render/particles.js';
 import { TileRenderer } from '../render/tiles.js';
@@ -103,6 +103,7 @@ export class Game {
         case 'door': case 'bossDoor': this.objects.push(new Door(e)); break;
         case 'exit': this.objects.push(new Exit(e)); break;
         case 'throne': this.throne = new Throne(e); this.objects.push(this.throne); break;
+        case 'archivists': { const a = new Archivists(e); a.talked = !!flags.fullMap; this.objects.push(a); break; }
         default: break;
       }
     }
@@ -211,6 +212,7 @@ export class Game {
   }
 
   isSeen(wx, wy) {
+    if (this.save.storyFlags.fullMap) return true;
     const k = Math.floor(wx / TILE / SEEN) + Math.floor(wy / TILE / SEEN) * 10000;
     return this.seen.has(k);
   }
@@ -412,6 +414,18 @@ export class Game {
         pr.free(this);
         this.startScene('prisoner.spare', () => this.hud.notify('Du erinnerst dich, wer du warst', `Maximale Lebenskraft: ${s.maxHealth}`, '#ffe0e8'));
       }
+      this.persist();
+    });
+  }
+
+  talkToArchivists(ar) {
+    const s = this.save;
+    if (s.storyFlags.fullMap) { this.startScene('bibliothek.archivists.again'); return; }
+    this.startScene('bibliothek.archivists', () => {
+      s.storyFlags.fullMap = true;
+      ar.talked = true;
+      this.audio.play('heartShard');
+      this.hud.notify('Karte von Ingonesien', 'Alle Gebiete und Verstecke sind jetzt auf deiner Karte.', '#f0e0b0');
       this.persist();
     });
   }
