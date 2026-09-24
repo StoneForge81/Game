@@ -9,6 +9,7 @@ import { SLOT_COUNT, formatPlayTime } from '../core/save.js';
 import { T } from '../game/tiles.js';
 import { DIFFICULTY } from '../data/config.js';
 import { makeCanvas } from '../render/renderer.js';
+import { voiceId } from '../core/voice-id.js';
 
 /** Richtungstasten mit Wiederholung beim Gedrückthalten (Stick-freundlich). */
 class RepeatNav {
@@ -98,7 +99,12 @@ export class MenuScreen {
     ctx.save();
     if (this.backdrop) { ctx.fillStyle = `rgba(4,0,6,${this.backdrop})`; ctx.fillRect(0, 0, W, H); }
     const rowH = 84;
-    const h = 200 + this.items.length * rowH + (this.subtitle ? 40 : 0);
+    // Lange Listen scrollen mit, damit nichts unten aus dem Bild ragt.
+    const maxRows = Math.max(3, Math.floor((H - 300 - (this.subtitle ? 40 : 0)) / rowH));
+    const rows = Math.min(this.items.length, maxRows);
+    const top = clamp(this._scroll ?? 0, this.sel - rows + 1, this.sel);
+    this._scroll = clamp(top, 0, this.items.length - rows);
+    const h = 200 + rows * rowH + (this.subtitle ? 40 : 0);
     const w = this.width, x = W / 2 - w / 2, y = Math.max(40, H / 2 - h / 2);
     gothicPanel(ctx, x, y, w, h, { accent: true });
     ctx.textAlign = 'center';
@@ -111,9 +117,17 @@ export class MenuScreen {
       ctx.fillText(this.subtitle, W / 2, iy + 6);
       iy += 40;
     }
+    if (this._scroll > 0 || this._scroll + rows < this.items.length) {
+      ctx.fillStyle = '#c9a048';
+      ctx.textAlign = 'center';
+      ctx.font = `600 28px ${FONT_HEAD}`;
+      if (this._scroll > 0) ctx.fillText('▲', x + w - 28, iy + 20);
+      if (this._scroll + rows < this.items.length) ctx.fillText('▼', x + w - 28, iy + rows * rowH - 20);
+    }
     this.items.forEach((it, i) => {
+      if (i < this._scroll || i >= this._scroll + rows) return;
       const sel = i === this.sel;
-      const ry = iy + i * rowH;
+      const ry = iy + (i - this._scroll) * rowH;
       if (sel) {
         const pulse = 0.75 + 0.25 * Math.sin(this.t * 5);
         ctx.fillStyle = `rgba(150,16,40,${0.55 * pulse})`;
@@ -202,6 +216,10 @@ export function optionsMenu(app, onClose) {
       vol('masterVolume', 'Gesamtlautstärke'),
       vol('musicVolume', 'Musik'),
       vol('sfxVolume', 'Effekte'),
+      vol('voiceVolume', 'Stimmen'),
+      { label: 'Klang', type: 'choice', get: () => s.recordedAudio !== false, set: (v) => { s.recordedAudio = v; apply(); },
+        options: [{ label: 'Orchester & Sprecher', value: true }, { label: 'Erzeugt (klassisch)', value: false }],
+        desc: 'Orchester & Sprecher: aufgenommene Musik, Geräusche und Stimmen. Erzeugt: alles live berechnet, lädt nichts nach.' },
       { label: 'Bildqualität', type: 'choice', get: () => (s.autoQuality ? 'auto' : s.quality),
         set: (v) => { if (v === 'auto') s.autoQuality = true; else { s.autoQuality = false; s.quality = v; } apply(); },
         options: [{ label: 'Automatisch', value: 'auto' }, { label: '540p (schnell)', value: 0 }, { label: '720p', value: 1 }, { label: '900p', value: 2 }, { label: '1080p (scharf)', value: 3 }],
@@ -454,15 +472,23 @@ export class EndingScreen {
     this.app = app; this.ending = ending; this.stats = stats; this.onDone = onDone;
     this.page = 0; this.t = 0;
     this.pages = [...ending.lines.map((l) => ({ text: l })), { credits: true }];
+    this._spoken = -1;
   }
   update(dt) {
     this.t += dt;
     const i = this.app.input;
+    // Der Erzähler liest jede Tafel vor.
+    if (this._spoken !== this.page) {
+      this._spoken = this.page;
+      const p = this.pages[this.page];
+      if (p && p.text) this.app.audio.playVoice(voiceId('narrator', p.text));
+      else this.app.audio.stopVoice(0.6);
+    }
     if (this.t > 0.8 && (i.pressed('confirm') || i.pressed('attack') || i.pressed('drain'))) {
       this.app.audio.play('uiConfirm');
       this.page++;
       this.t = 0;
-      if (this.page >= this.pages.length) this.onDone();
+      if (this.page >= this.pages.length) { this.app.audio.stopVoice(0.6); this.onDone(); }
     }
   }
   draw(ctx, W, H) {
