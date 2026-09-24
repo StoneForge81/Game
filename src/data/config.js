@@ -82,6 +82,7 @@ export const LAYER = {
 // Standard-Einstellungen. Werden beim ersten Start in localStorage geschrieben.
 export const DEFAULT_SETTINGS = {
   quality: 2,            // Index in QUALITY_HEIGHTS: 0 = 540p … 3 = 1080p (volle HD-Schärfe)
+  autoQuality: true,     // Qualität automatisch an die Leistung des Geräts anpassen
   masterVolume: 0.8,
   musicVolume: 0.55,
   sfxVolume: 0.9,

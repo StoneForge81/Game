@@ -54,13 +54,12 @@ function frame() {
   r.computeLights(lights, (a, b, c, d) => world.queryOccluders(a, b, c, d));
 
   bg.draw(r, camX, camY, world.pxH, 1 / 60);
-  r.background((ctx) => tiles.drawBack(ctx, view));
-  r.lightBackground(0.18);
   bg.drawFog(r, camX);
+  r.flushBackground();
 
   r.world((ctx) => {
-    for (const d of level.deco) if (d.x > view.x - 80 && d.x < view.x + view.w + 80) drawDeco(ctx, d, t, zone);
     tiles.drawFront(ctx, view);
+    for (const d of level.deco) if (d.x > view.x - 80 && d.x < view.x + view.w + 80) drawDeco(ctx, d, t, zone);
     // Ingomar und ein Ritter des Ordens als Probefiguren
     const pose = makePose('idle', 1);
     const rig = solveRig(pose);

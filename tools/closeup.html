@@ -18,18 +18,19 @@ function show(name, anim, x, y, opts = {}) {
   let cape = null, hair = null;
   if (c.cape) {
     cape = new Cloth(8, 3.1, 560, 0.07); hair = new Cloth(5, 2.6, 400, 0.12);
-    const rig = solveRig(pose);
+    const rig = solveRig(pose, (opts.sz ?? 1) * 1.12);
     const ax = fx + f * (rig.neck.x - 1.6), ay = fy + rig.neck.y + 1.2;
     cape.reset(ax, ay); hair.reset(fx + f * (rig.head.x - 2.2), fy + rig.head.y - 1);
     for (let i = 0; i < 160; i++) { cape.update(1 / 60, ax, ay, fy, (opts.wind ?? -200) * f); hair.update(1 / 60, fx + f * (rig.head.x - 2.2), fy + rig.head.y - 1, fy, (opts.wind ?? -200) * f * 0.6); }
   }
-  const rig = drawHumanoid(ctx, fx, fy, f, pose, c, { cape, hair, t: 1 });
+  const rig = drawHumanoid(ctx, fx, fy, f, pose, c, { cape, hair, t: 1, sz: opts.sz ?? 1 });
   if (c.eyes) drawEyesGlow(ctx, fx, fy, f, rig, c.eyes, false);
   ctx.restore();
 }
-show('ingomar', 'idle', 200, 560);
-show('ingomar', 'run', 520, 560, { wind: -900 });
-show('knight', 'idle', 820, 560, { facing: -1 });
-show('serafine', 'idle', 1100, 560, { facing: -1 });
+show('ingomar', 'idle', 170, 560);
+show('yvonne', 'idle', 390, 560, { facing: -1 });
+show('renate', 'idle', 620, 560);
+show('egon', 'idle', 840, 560);
+show('henry', 'idle', 1070, 560, { facing: -1, sz: 0.78 });
 window.__ready = true;
 </script></body></html>

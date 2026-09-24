@@ -369,7 +369,7 @@ export function limb(ctx, a, b, w0, w1, color) {
  * Das ergibt eine harte Schattenkante auf der lichtabgewandten Seite.
  * Licht kommt von vorn oben (in Blickrichtung).
  */
-function cel(ctx, path, base, shade, sx = 1.1, sy = -0.8, light = null, stroke = true) {
+export function cel(ctx, path, base, shade, sx = 1.1, sy = -0.8, light = null, stroke = true) {
   // 1) alles im Schattenton
   ctx.fillStyle = shade;
   ctx.fill(path);
@@ -401,14 +401,14 @@ function cel(ctx, path, base, shade, sx = 1.1, sy = -0.8, light = null, stroke =
 }
 
 /** Glied mit Cel-Shading. */
-function celLimb(ctx, a, b, w0, w1, base, shade, light = null) {
+export function celLimb(ctx, a, b, w0, w1, base, shade, light = null) {
   const p = limbPath(a, b, w0, w1);
   cel(ctx, p, base, shade, w0 * 0.22, -w0 * 0.12, light);
   return p;
 }
 
 /** Polygon/Kurvenzug aus Punkten als Path2D (glatt über Mittelpunkte). */
-function smoothPath(pts, closed = true) {
+export function smoothPath(pts, closed = true) {
   const p = new Path2D();
   if (pts.length < 3) return p;
   const n = pts.length;
@@ -426,7 +426,7 @@ function smoothPath(pts, closed = true) {
   return p;
 }
 
-const P = (x, y, sharp = false) => ({ x, y, sharp });
+export const P = (x, y, sharp = false) => ({ x, y, sharp });
 
 // Achsen des Rumpfs: u = hoch, r = nach vorn (aus der Neigung).
 function torsoAxes(lean) {
@@ -500,6 +500,41 @@ export const COSTUMES = {
     pants: '#5a4a3a', pantsShade: '#3a2e22', boots: '#3a2c20', bootsShade: '#221810',
     eyes: null, body: 'rags', headwear: 'messy', width: 0.95,
   },
+  // Die Familie des Fürsten
+  henry: {
+    skin: '#f0e2e6', skinShade: '#c0a6b4', skinL: '#ffffff',
+    coat: '#2c2040', coatShade: '#170f24', coatL: '#5c4c88',
+    trim: '#d8b45a', trimShade: '#8a6a26',
+    lining: '#b01330', liningShade: '#6c0719',
+    pants: '#231a30', pantsShade: '#140e1c', boots: '#1c1424', bootsShade: '#0e0a14', bootsL: '#4a3a60',
+    hair: '#2a1e2e', hairShade: '#140c16', hairL: '#5a4462',
+    lace: '#f6f2f4', laceShade: '#bdb4c4',
+    eyes: '#ff3a4a', body: 'lord', headwear: 'none', hairStyle: 'lord',
+    cape: true, collar: true, ears: true, width: 0.95,
+  },
+  renate: {
+    skin: '#ecd2c8', skinShade: '#b8988e', skinL: '#ffffff',
+    coat: '#3a2a3e', coatShade: '#20152a', coatL: '#6a5270', trim: '#b8a0c8', trimShade: '#6a5878',
+    pants: '#2a1e2e', pantsShade: '#180f1a', boots: '#1e141e', bootsShade: '#0e080e',
+    hair: '#dcd8e2', hairShade: '#a09aac', hairL: '#ffffff',
+    eyes: '#ff6070', body: 'robe', headwear: 'bun', width: 1.05, shawl: '#6a2a44', shawlShade: '#3e1428',
+  },
+  egon: {
+    skin: '#e6ccc0', skinShade: '#b09080', skinL: '#ffffff',
+    coat: '#2a2a34', coatShade: '#16161e', coatL: '#58586a', trim: '#b89a50', trimShade: '#7a6430',
+    pants: '#24222a', pantsShade: '#141218', boots: '#1a1616', bootsShade: '#0c0a0a',
+    hair: '#e8e6ee', hairShade: '#a8a4b4',
+    eyes: '#ff6070', body: 'longcoat', headwear: 'none', hairStyle: 'bald', mustache: true, width: 1.05,
+    weapon: 'lantern',
+  },
+  yvonne: {
+    skin: '#f4e4ea', skinShade: '#c4a6b8', skinL: '#ffffff',
+    coat: '#8e0e24', coatShade: '#4e0612', coatL: '#e0304c', trim: '#e8c060', trimShade: '#9a7422',
+    pants: '#4e0612', pantsShade: '#2a030a', boots: '#2a030a', bootsShade: '#140104',
+    hair: '#1e1422', hairShade: '#0c0810', hairL: '#4e3a58',
+    eyes: '#ff1f35', body: 'robe', headwear: 'circlet', hairStyle: 'lord', ears: true, width: 1.0,
+    cape: true, capeColor: '#2a0a14', capeShade: '#14040a', liningColor: '#b01330', liningShade: '#6c0719',
+  },
   // Bosse
   ambrosius: {
     skin: '#dcae90', skinShade: '#a07a62',
@@ -571,31 +606,42 @@ function getScratch(px) {
 export function drawHumanoid(ctx, x, y, facing, pose, costume, extra = {}) {
   const sz = (extra.sz ?? 1) * CHAR_SCALE;
   const rig = solveRig(pose, sz);
+  const paint = (c) => paintFigure(c, x, y, facing, pose, rig, costume, sz, extra);
   if (extra.noOutline) {
     ctx.save();
     if (extra.alpha != null) ctx.globalAlpha = extra.alpha;
-    paintFigure(ctx, x, y, facing, pose, rig, costume, sz, extra);
+    paint(ctx);
     ctx.restore();
-    return rig;
+  } else {
+    outlined(ctx, x, y, sz, paint, extra);
   }
+  return rig;
+}
 
+/**
+ * Zeichnet beliebiges mit Tuschekontur: `paint(ctx)` malt in Weltkoordinaten,
+ * das Ergebnis bekommt einen dunklen Umriss und landet in `ctx`.
+ * (x, y) ist der Fußpunkt, `sz` die Größe (bestimmt die Leinwand um die Figur).
+ * extra: { alpha, flash, flashColor, outline, inkColor, box }
+ */
+export function outlined(ctx, x, y, sz, paint, extra = {}) {
   // Pixel pro Welteinheit aus der aktuellen Transformation ablesen.
   const m = ctx.getTransform();
   const ppu = Math.max(0.5, Math.hypot(m.a, m.b));
-  const box = 110 * sz;                   // Welt-Einheiten um die Figur
+  const box = (extra.box ?? 84) * sz;     // Welt-Einheiten um die Figur (Umhang inklusive)
   const px = Math.ceil(box * ppu);
   const s = getScratch(px);
   const A = s.ac, B = s.bc;
-  const ox = box / 2, oy = box * 0.72;    // Fußpunkt in der Box
+  const ox = box / 2, oy = box * (extra.footAt ?? 0.72);
 
-  // 1) Figur in Leinwand A
+  // 1) Motiv in Leinwand A
   A.setTransform(1, 0, 0, 1, 0, 0);
   A.globalCompositeOperation = 'source-over';
   A.globalAlpha = 1;
   A.clearRect(0, 0, px, px);
   A.setTransform(ppu, 0, 0, ppu, 0, 0);
   A.translate(ox - x, oy - y);           // Weltkoordinaten -> Box
-  paintFigure(A, x, y, facing, pose, rig, costume, sz, extra);
+  paint(A);
   if (extra.flash > 0) {
     A.setTransform(1, 0, 0, 1, 0, 0);
     A.globalCompositeOperation = 'source-atop';
@@ -604,14 +650,14 @@ export function drawHumanoid(ctx, x, y, facing, pose, costume, extra = {}) {
     A.globalCompositeOperation = 'source-over';
   }
 
-  // 2) Kontur: Silhouette in 8 Richtungen versetzt, dann in Tuschefarbe getaucht
+  // 2) Kontur: Silhouette rundum versetzt, dann in Tuschefarbe getaucht
   const o = Math.max(1, (extra.outline ?? 0.62) * ppu);
   B.setTransform(1, 0, 0, 1, 0, 0);
   B.globalCompositeOperation = 'source-over';
   B.globalAlpha = 1;
   B.clearRect(0, 0, px, px);
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * TAU;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
     B.drawImage(s.a, 0, 0, px, px, Math.cos(a) * o, Math.sin(a) * o, px, px);
   }
   B.globalCompositeOperation = 'source-in';
@@ -625,7 +671,6 @@ export function drawHumanoid(ctx, x, y, facing, pose, costume, extra = {}) {
   if (extra.alpha != null) ctx.globalAlpha *= extra.alpha;
   ctx.drawImage(s.b, 0, 0, px, px, x - ox, y - oy, px / ppu, px / ppu);
   ctx.restore();
-  return rig;
 }
 
 /** Die eigentliche Figur (Weltkoordinaten), ohne Kontur. */
@@ -762,7 +807,7 @@ function drawArm(ctx, arm, c, sz, back, rig, pose) {
 function drawHand(ctx, arm, c, sz, back, bony) {
   const b = back ? c.skinShade : c.skin, sh = back ? shadeColor(c.skinShade, 0.8) : c.skinShade;
   const h = arm.hand;
-  const p = new Path2D(); p.arc(h.x, h.y, (bony ? 1.1 : 1.55) * sz, 0, TAU);
+  const p = new Path2D(); p.arc(h.x, h.y, (bony ? 1.0 : 1.2) * sz, 0, TAU);
   cel(ctx, p, b, sh, 0.35, -0.3, null, false);
   if (c.claws && !back) {
     // Lange Krallen
@@ -914,6 +959,14 @@ function drawBody(ctx, rig, pose, c, sz, w, extra) {
       P(hip.x + 1.5, hip.y + 6 * sz, true), P(hip.x + hw, hip.y + 2 * sz, true), P(hip.x + hw, hip.y, true),
     ]);
     cel(ctx, r, c.coatShade, shadeColor(c.coatShade, 0.7), 0.4, -0.3);
+  }
+
+  // Schultertuch (Oma Renate)
+  if (c.shawl) {
+    const sh0 = along(shoulder, ax, -sw * 1.05, 0.6 * sz), sh1 = along(shoulder, ax, sw * 1.05, 0.4 * sz);
+    const tip = along(shoulder, ax, sw * 0.2, -6.5 * sz);
+    const shawl = smoothPath([sh0, sh1, P(tip.x + 1.5 * sz, tip.y, true), P(tip.x - 1.5 * sz, tip.y + 0.5 * sz, true)]);
+    cel(ctx, shawl, c.shawl, c.shawlShade, 0.6, -0.5);
   }
 
   // Hoher Vampirkragen mit Jabot
@@ -1113,6 +1166,15 @@ function drawHead(ctx, rig, c, sz, extra) {
     ctx.moveTo(head.x + hr * 0.2, head.y - hr * 1.1); ctx.quadraticCurveTo(head.x - hr * 0.6, head.y - hr * 0.8, head.x - hr * 0.9, head.y + hr * 0.2);
     ctx.moveTo(head.x - hr * 0.2, head.y - hr * 1.25); ctx.quadraticCurveTo(head.x - hr * 1.0, head.y - hr * 0.9, head.x - hr * 1.15, head.y - hr * 0.1);
     ctx.stroke();
+  } else if (c.hairStyle === 'bald' && c.mustache) {
+    // Opa Egons weißer Schnurrbart und Haarkranz
+    const ring = smoothPath([P(head.x - hr * 0.2, head.y - hr * 0.2), P(head.x - hr * 1.05, head.y - hr * 0.5), P(head.x - hr * 1.0, head.y + hr * 0.5), P(head.x - hr * 0.4, head.y + hr * 0.4)]);
+    cel(ctx, ring, c.hair, c.hairShade, 0.3, -0.3);
+    const m = smoothPath([P(head.x + hr * 0.7, head.y + hr * 0.42), P(head.x + hr * 1.3, head.y + hr * 0.5), P(head.x + hr * 1.35, head.y + hr * 0.9, true), P(head.x + hr * 0.9, head.y + hr * 0.62), P(head.x + hr * 0.5, head.y + hr * 0.75, true)]);
+    cel(ctx, m, c.hair, c.hairShade, 0.3, -0.3);
+    // Buschige Braue
+    ctx.fillStyle = c.hair;
+    ctx.fillRect(head.x + hr * 0.3, head.y - hr * 0.42, hr * 0.62, hr * 0.2);
   } else if (c.hairStyle === 'bald' && c.beard) {
     const beard = smoothPath([P(head.x + hr * 0.95, head.y + hr * 0.35), P(head.x + hr * 0.95, head.y + hr * 2.4), P(head.x + hr * 0.1, head.y + hr * 3.0, true), P(head.x - hr * 0.3, head.y + hr * 1.3), P(head.x - hr * 0.2, head.y + hr * 0.4)]);
     cel(ctx, beard, c.hair, c.hairShade, 0.5, -0.4);
@@ -1219,6 +1281,14 @@ function drawHeadwear(ctx, head, hr, c, sz) {
       ctx.fillStyle = c.trim;
       ctx.fillRect(head.x - hr * 0.8, head.y - hr * 0.8, hr * 1.75, hr * 0.26);
       ctx.beginPath(); ctx.moveTo(head.x + hr * 0.1, head.y - hr * 0.8); ctx.lineTo(head.x + hr * 0.35, head.y - hr * 1.5); ctx.lineTo(head.x + hr * 0.6, head.y - hr * 0.8); ctx.fill();
+      break;
+    }
+    case 'bun': {
+      // Grauer Dutt – Oma Renate
+      const hairTop = smoothPath([P(head.x + hr * 0.9, head.y - hr * 0.3), P(head.x + hr * 0.4, head.y - hr * 1.15), P(head.x - hr * 0.8, head.y - hr * 1.0), P(head.x - hr * 1.1, head.y + hr * 0.3), P(head.x - hr * 0.3, head.y - hr * 0.1)]);
+      cel(ctx, hairTop, c.hair, c.hairShade, 0.4, -0.4);
+      const bun = new Path2D(); bun.arc(head.x - hr * 0.9, head.y - hr * 0.95, hr * 0.62, 0, TAU);
+      cel(ctx, bun, c.hair, c.hairShade, 0.3, -0.3);
       break;
     }
     case 'messy': {
@@ -1384,6 +1454,16 @@ function drawWeapon(ctx, arm, c, pose, sz, extra) {
       cel(ctx, bk, '#7a2218', '#4a120c', 0.4, -0.4);
       ctx.fillStyle = '#f0e4c8'; ctx.fillRect(-0.5 * sz, -2.6 * sz, 6 * sz, 1 * sz);
       ctx.fillStyle = c.trim; ctx.fillRect(2 * sz, -1.4 * sz, 2 * sz, 2 * sz);
+      break;
+    }
+    case 'lantern': {
+      // Opa Egons Laterne – sein Licht führt durch die Sargreise
+      ctx.strokeStyle = '#3a3030'; ctx.lineWidth = 0.5 * sz;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 3 * sz); ctx.stroke();
+      const lb = new Path2D(); lb.rect(-2 * sz, 3 * sz, 4 * sz, 5 * sz);
+      cel(ctx, lb, '#4a3a2a', '#2a2018', 0.3, -0.3);
+      ctx.fillStyle = '#ffd070'; ctx.fillRect(-1.3 * sz, 3.8 * sz, 2.6 * sz, 3.4 * sz);
+      ctx.fillStyle = '#3a3030'; ctx.fillRect(-2.6 * sz, 2.6 * sz, 5.2 * sz, 0.8 * sz);
       break;
     }
     case 'wrench': {

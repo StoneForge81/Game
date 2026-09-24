@@ -28,7 +28,7 @@ export class Camera {
   /** Sofort auf ein Ziel springen (nach Szenenwechsel). */
   snap(tx, ty) {
     this.x = tx - VIEW_W / 2;
-    this.y = ty - VIEW_H * 0.58;
+    this.y = ty - VIEW_H * 0.7;
     this.lookX = 0;
     this._clamp();
   }
@@ -48,8 +48,8 @@ export class Camera {
       const want = target.facing * 44 + clamp(target.vx * 0.14, -30, 30);
       this.lookX = damp(this.lookX, want, 0.35, dt);
       tx = target.x + this.lookX - VIEW_W / 2;
-      // Die Figur sitzt etwas unter der Bildmitte – man sieht mehr von oben.
-      const desiredY = target.y - VIEW_H * 0.58;
+      // Die Füße sitzen im unteren Drittel – man sieht Raum über sich, wenig Fels darunter.
+      const desiredY = target.y - VIEW_H * 0.7;
       // Senkrechte Totzone: nur nachziehen, wenn die Figur sie verlässt
       // oder auf dem Boden steht (dann sanft zentrieren).
       const dz = 34;

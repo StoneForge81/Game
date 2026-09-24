@@ -86,6 +86,14 @@ export class Renderer {
     this.glowBlur = makeCanvas(this.glow.width, this.glow.height);
     this.gbctx = this.glowBlur.getContext('2d');
 
+    // Kulisse in halber Auflösung: sie ist weich gemalt, die leichte Unschärfe
+    // wirkt wie Tiefenunschärfe – und spart auf schwachen TV-GPUs viel Zeit.
+    this.bgRes = s * 0.5;
+    this.bgBuf = makeCanvas(VIEW_W * this.bgRes, VIEW_H * this.bgRes);
+    this.bctx = this.bgBuf.getContext('2d', { alpha: false });
+    this.glowBlur2 = makeCanvas(this.glow.width, this.glow.height);
+    this.gb2ctx = this.glowBlur2.getContext('2d');
+
     // Welt-Ebene mit Transparenz – wird separat beleuchtet.
     this.worldBuf = makeCanvas(this.scene.width, this.scene.height);
     this.wctx = this.worldBuf.getContext('2d');
@@ -94,7 +102,7 @@ export class Renderer {
     this.fxctx = this.fx.getContext('2d');
 
     this._supportsFilter = typeof this.gctx.filter === 'string';
-    for (const c of [this.sctx, this.lctx, this.gctx, this.wctx]) {
+    for (const c of [this.sctx, this.lctx, this.gctx, this.wctx, this.bctx]) {
       c.imageSmoothingEnabled = true;
       c.imageSmoothingQuality = 'high';
     }
@@ -139,6 +147,7 @@ export class Renderer {
     if (s === this.scale) return;
     this.scale = s;
     this._lightSprites.clear();
+    this._grainPattern = null;
     this._buildBuffers();
     this._buildVignette(this.scene.width, this.scene.height);
     this.onScaleChange && this.onScaleChange(s);
@@ -207,6 +216,14 @@ export class Renderer {
     ctx.setTransform(k, 0, 0, k, Math.round(-cx * k + ox), Math.round(-cy * k + oy));
   }
 
+  /** Weltkoordinate -> virtuelle UI-Koordinate (1920×1080), für Aufforderungen und Sprechblasen. */
+  worldToUI(wx, wy) {
+    const z = this.zoom;
+    const sx = (wx - (this.camX + this.shakeX)) * z + (VIEW_W / 2) * (1 - z);
+    const sy = (wy - (this.camY + this.shakeY)) * z + (VIEW_H / 2) * (1 - z);
+    return { x: sx * (UI_W / VIEW_W), y: sy * (UI_H / VIEW_H) };
+  }
+
   /** Sichtbarer Weltausschnitt (mit Rand), fürs Aussortieren. */
   viewRect(margin = 0) {
     const w = VIEW_W / this.zoom, h = VIEW_H / this.zoom;
@@ -223,8 +240,12 @@ export class Renderer {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1;
-    c.fillStyle = '#05040a';
-    c.fillRect(0, 0, this.scene.width, this.scene.height);
+    const b = this.bctx;
+    b.setTransform(1, 0, 0, 1, 0, 0);
+    b.globalCompositeOperation = 'source-over';
+    b.globalAlpha = 1;
+    b.fillStyle = '#05040a';
+    b.fillRect(0, 0, this.bgBuf.width, this.bgBuf.height);
 
     const g = this.gctx;
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -238,20 +259,48 @@ export class Renderer {
     w.clearRect(0, 0, this.worldBuf.width, this.worldBuf.height);
   }
 
-  /** Hintergrund-Kulisse direkt in die Szene. parallax < 1 = weiter hinten. */
+  /** Kulisse in Weltkoordinaten (halbe Auflösung). parallax < 1 = weiter hinten. */
   background(fn, parallax = 1) {
-    const c = this.sctx;
+    const c = this.bctx;
     c.save();
-    this._worldTransform(c, this.scale, parallax);
+    this._worldTransform(c, this.bgRes, parallax);
     fn(c);
     c.restore();
   }
 
-  /** Hintergrund in Bildschirmkoordinaten (Himmel, Mond – bewegen sich nicht mit). */
+  /** Kulisse in Bildschirmkoordinaten (Himmel, Mond – bewegen sich nicht mit). */
   backgroundScreen(fn) {
+    const c = this.bctx;
+    c.save();
+    c.setTransform(this.bgRes, 0, 0, this.bgRes, 0, 0);
+    fn(c);
+    c.restore();
+  }
+
+  /** Fertige Kulisse (mit Farbstimmung der Zone) in die Szene übernehmen. */
+  flushBackground() {
+    const b = this.bctx;
+    if (this.grade.tint) {
+      b.save();
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.globalCompositeOperation = this.grade.mode || 'soft-light';
+      b.fillStyle = this.grade.tint;
+      b.fillRect(0, 0, this.bgBuf.width, this.bgBuf.height);
+      b.restore();
+    }
+    const sc = this.sctx;
+    sc.save();
+    sc.setTransform(1, 0, 0, 1, 0, 0);
+    sc.globalCompositeOperation = 'copy';
+    sc.drawImage(this.bgBuf, 0, 0, this.scene.width, this.scene.height);
+    sc.restore();
+  }
+
+  /** Unbeleuchtet über die fertige Szene zeichnen (Schadenszahlen u. Ä.). */
+  overlay(fn) {
     const c = this.sctx;
     c.save();
-    c.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    this._worldTransform(c, this.scale);
     fn(c);
     c.restore();
   }
@@ -427,10 +476,12 @@ export class Renderer {
     const r = L.radius;
 
     // Nur den Bereich des Lichts bearbeiten, nicht den ganzen Puffer.
+    const bb = this._lightBox(L, res);
+    if (!bb) return;
     tc.setTransform(1, 0, 0, 1, 0, 0);
     tc.globalCompositeOperation = 'source-over';
     tc.globalAlpha = 1;
-    tc.clearRect(0, 0, this.lightTmp.width, this.lightTmp.height);
+    tc.clearRect(bb.x, bb.y, bb.w, bb.h);
 
     tc.save();
     this._worldTransform(tc, res);
@@ -471,8 +522,21 @@ export class Renderer {
     lc.save();
     lc.setTransform(1, 0, 0, 1, 0, 0);
     lc.globalCompositeOperation = 'lighter';
-    lc.drawImage(this.lightTmp, 0, 0);
+    lc.drawImage(this.lightTmp, bb.x, bb.y, bb.w, bb.h, bb.x, bb.y, bb.w, bb.h);
     lc.restore();
+  }
+
+  /** Pixel-Rechteck eines Lichts im Lichtpuffer (auf den Puffer beschnitten). */
+  _lightBox(L, res) {
+    const z = this.zoom, k = res * z;
+    const ox = (VIEW_W * res) / 2 - (VIEW_W / 2) * k - (this.camX + this.shakeX) * k;
+    const oy = (VIEW_H * res) / 2 - (VIEW_H / 2) * k - (this.camY + this.shakeY) * k;
+    const x0 = Math.max(0, Math.floor((L.x - L.radius) * k + ox) - 2);
+    const y0 = Math.max(0, Math.floor((L.y - L.radius) * k + oy) - 2);
+    const x1 = Math.min(this.light.width, Math.ceil((L.x + L.radius) * k + ox) + 2);
+    const y1 = Math.min(this.light.height, Math.ceil((L.y + L.radius) * k + oy) + 2);
+    if (x1 <= x0 || y1 <= y0) return null;
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   }
 
   // --- Nachbearbeitung und Ausgabe ----------------------------------------
@@ -497,24 +561,28 @@ export class Renderer {
       } else {
         gb.drawImage(this.glow, 0, 0);
       }
-      sc.globalCompositeOperation = 'lighter';
-      sc.globalAlpha = 0.9;
-      sc.drawImage(this.glowBlur, 0, 0, this.scene.width, this.scene.height);
+      // Weiter Hof: stärker weichgezeichnet, ebenfalls in Viertelauflösung.
+      const g2 = this.gb2ctx;
+      g2.setTransform(1, 0, 0, 1, 0, 0);
+      g2.globalCompositeOperation = 'source-over';
+      g2.clearRect(0, 0, this.glowBlur2.width, this.glowBlur2.height);
       if (this._supportsFilter) {
-        sc.filter = `blur(${Math.max(2, 10 * this.scale)}px)`;
-        sc.globalAlpha = 0.55;
-        sc.drawImage(this.glow, 0, 0, this.scene.width, this.scene.height);
-        sc.filter = 'none';
+        g2.filter = `blur(${Math.max(2, 9 * this.glowRes)}px)`;
+        g2.drawImage(this.glowBlur, 0, 0);
+        g2.filter = 'none';
       }
+      // Beide Stufen in einem Durchgang aufaddieren: erst klein ineinander, dann hochskaliert.
+      gb.globalCompositeOperation = 'lighter';
+      gb.globalAlpha = 0.6;
+      gb.drawImage(this.glowBlur2, 0, 0);
+      gb.globalAlpha = 1;
+      sc.globalCompositeOperation = 'lighter';
+      sc.globalAlpha = 0.95;
+      sc.drawImage(this.glowBlur, 0, 0, this.scene.width, this.scene.height);
       sc.globalAlpha = 1;
     }
 
-    // Farbkorrektur der Zone: gibt jedem Gebiet seine eigene Stimmung.
-    if (this.grade.tint) {
-      sc.globalCompositeOperation = this.grade.mode || 'soft-light';
-      sc.fillStyle = this.grade.tint;
-      sc.fillRect(0, 0, this.scene.width, this.scene.height);
-    }
+    // (Die Farbstimmung der Zone liegt auf der Kulisse – siehe flushBackground.)
 
     // Blutrausch / wenig Leben: Ränder färben sich rot.
     if (this.bloodTint > 0.01) {
@@ -545,16 +613,15 @@ export class Renderer {
     }
 
     if (s.grain) {
+      // Ein einziger Musterdurchgang mit zufälligem Versatz.
+      if (!this._grainPattern) this._grainPattern = sc.createPattern(this.grainTex, 'repeat');
       sc.globalCompositeOperation = 'overlay';
       sc.globalAlpha = 0.07;
-      const ox = -Math.floor(Math.random() * 256);
-      const oy = -Math.floor(Math.random() * 256);
-      const t = this.grainTex;
-      // Korn in Bildschirmgröße unabhängig von der Renderauflösung.
-      const step = 256 * Math.max(1, this.scale / 2);
-      for (let y = oy; y < this.scene.height; y += step) {
-        for (let x = ox; x < this.scene.width; x += step) sc.drawImage(t, x, y, step, step);
-      }
+      sc.save();
+      sc.translate(-Math.floor(Math.random() * 256), -Math.floor(Math.random() * 256));
+      sc.fillStyle = this._grainPattern;
+      sc.fillRect(0, 0, this.scene.width + 256, this.scene.height + 256);
+      sc.restore();
       sc.globalAlpha = 1;
     }
 

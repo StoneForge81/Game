@@ -69,7 +69,7 @@ export const ZONES = {
 
   hof: {
     name: 'Die Zwinger',
-    subtitle: 'Unter dem Blutmond jagen ihre Hunde',
+    subtitle: 'Hoch über den Dächern von Ingopolis',
     seed: 3303,
     music: 'hof',
     ambience: 'storm',

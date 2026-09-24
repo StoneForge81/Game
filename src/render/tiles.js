@@ -157,7 +157,7 @@ export class TileRenderer {
     let c = this.cache.get(key);
     if (!c) {
       const px = Math.ceil(CS * this.scale);
-      c = { back: this.outdoor ? null : makeCanvas(px, px), front: makeCanvas(px, px), dirty: true, used: 0 };
+      c = { front: makeCanvas(px, px), dirty: true, used: 0 };
       this.cache.set(key, c);
       this._evict();
     }
@@ -179,16 +179,12 @@ export class TileRenderer {
     if (oldKey) this.cache.delete(oldKey);
   }
 
-  /** Sichtbare Stücke der Rückwand zeichnen (Hintergrund-Durchgang). */
-  drawBack(ctx, view) {
-    if (this.outdoor) return;
-    this._frame++;
-    this._each(view, (c, x, y) => { if (c.back) ctx.drawImage(c.back, x, y, CS, CS); });
-  }
+  /** Früher eigener Durchgang für die Rückwand – jetzt Teil der Mauer-Stücke. */
+  drawBack() {}
 
-  /** Sichtbare Stücke der Mauern zeichnen (Welt-Durchgang). */
+  /** Sichtbare Stücke zeichnen (Rückwand-Sockel und Mauern in einem Bild). */
   drawFront(ctx, view) {
-    if (this.outdoor) this._frame++;
+    this._frame++;
     this._each(view, (c, x, y) => ctx.drawImage(c.front, x, y, CS, CS));
   }
 
@@ -214,25 +210,19 @@ export class TileRenderer {
     const s = this.scale;
     const tx0 = cx * CHUNK, ty0 = cy * CHUNK;
 
-    if (c.back) {
-      const b = c.back.getContext('2d');
-      b.setTransform(1, 0, 0, 1, 0, 0);
-      b.clearRect(0, 0, c.back.width, c.back.height);
-      b.setTransform(s, 0, 0, s, -tx0 * TILE * s, -ty0 * TILE * s);
-      for (let ty = ty0; ty < ty0 + CHUNK; ty++) {
-        for (let tx = tx0; tx < tx0 + CHUNK; tx++) {
-          const t = this.world.tile(tx, ty);
-          if (t === T.EMPTY || t === T.WATER || t === T.PLATFORM || t === T.GRATE || t === T.GATE || t === T.SPIKES) {
-            this._drawBackTile(b, tx, ty);
-          }
-        }
-      }
-    }
-
     const f = c.front.getContext('2d');
     f.setTransform(1, 0, 0, 1, 0, 0);
     f.clearRect(0, 0, c.front.width, c.front.height);
     f.setTransform(s, 0, 0, s, -tx0 * TILE * s, -ty0 * TILE * s);
+    // Zuerst der Rückwand-Sockel hinter begehbaren Kacheln (nur drinnen)
+    if (!this.outdoor) {
+      for (let ty = ty0; ty < ty0 + CHUNK; ty++) {
+        for (let tx = tx0; tx < tx0 + CHUNK; tx++) {
+          const t = this.world.tile(tx, ty);
+          if (t === T.EMPTY || t === T.WATER || t === T.PLATFORM || t === T.GRATE || t === T.GATE || t === T.SPIKES) this._drawBackTile(f, tx, ty);
+        }
+      }
+    }
     for (let ty = ty0; ty < ty0 + CHUNK; ty++) {
       for (let tx = tx0; tx < tx0 + CHUNK; tx++) {
         const t = this.world.tile(tx, ty);
