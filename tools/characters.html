@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Figuren</title>
+<style>html,body{margin:0;background:#15121a}canvas{display:block}</style></head>
+<body><canvas id="c" width="1280" height="720"></canvas>
+<script type="module">
+import { drawHumanoid, makePose, COSTUMES, Cloth, solveRig, drawEyesGlow } from '../src/render/puppet.js';
+const ctx = document.getElementById('c').getContext('2d');
+const g = ctx.createLinearGradient(0, 0, 0, 720);
+g.addColorStop(0, '#2a2632'); g.addColorStop(1, '#141118');
+ctx.fillStyle = g; ctx.fillRect(0, 0, 1280, 720);
+
+const S = 3.2; // Zoom
+function show(costume, anim, col, row, opts = {}) {
+  const x = 60 + col * 105, y = 200 + row * 240;
+  ctx.save();
+  ctx.scale(S, S);
+  const fx = x / S, fy = y / S;
+  const pose = makePose(anim, opts.t ?? 0.8, opts);
+  const c = COSTUMES[costume];
+  let cape = null, hair = null;
+  if (c.cape) {
+    // Umhang einschwingen lassen
+    cape = new Cloth(8, 3.1, 520, 0.08);
+    hair = new Cloth(5, 2.6, 380, 0.12);
+    const rig = solveRig(pose, opts.sz ?? 1);
+    const f = opts.facing ?? 1;
+    const ax = fx + f * (rig.neck.x - 1.5), ay = fy + rig.neck.y + 1;
+    cape.reset(ax, ay); hair.reset(fx + f * (rig.head.x - 2), fy + rig.head.y);
+    for (let i = 0; i < 120; i++) {
+      cape.update(1 / 60, ax, ay, fy, (opts.wind ?? -600) * f);
+      hair.update(1 / 60, fx + f * (rig.head.x - 2), fy + rig.head.y, fy, (opts.wind ?? -600) * f * 0.6);
+    }
+  }
+  const rig = drawHumanoid(ctx, fx, fy, opts.facing ?? 1, pose, c, { cape, hair: c.hairStyle === 'long' || c.hairStyle === 'braid' ? hair : null, t: 1, sz: opts.sz ?? 1 });
+  if (c.eyes) drawEyesGlow(ctx, fx, fy, opts.facing ?? 1, rig, c.eyes, false, opts.sz ?? 1);
+  ctx.restore();
+  ctx.fillStyle = '#8a8496'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(`${costume} · ${anim}`, x, y + 22);
+}
+// Reihe 1: Ingomar in allen wichtigen Posen
+['idle', 'run', 'jump', 'fall', 'dash', 'attack1', 'attack2', 'attack3', 'cast', 'claw', 'drain', 'hurt'].forEach((a, i) =>
+  show('ingomar', a, i, 0, { progress: 0.55, phase: 1.2, wind: a === 'idle' ? -60 : -900 }));
+// Reihe 2: Jäger des Ordens
+['novice', 'acolyte', 'crossbow', 'knight', 'inquisitor', 'skeleton', 'automaton', 'prisoner'].forEach((c, i) =>
+  show(c, c === 'crossbow' ? 'aim' : c === 'prisoner' ? 'kneel' : c === 'acolyte' ? 'pray' : 'idle', i, 1, { facing: -1 }));
+// Reihe 3: Bosse (größer)
+['ambrosius', 'mirella', 'isolde', 'malachias', 'cogliostro', 'serafine'].forEach((c, i) =>
+  show(c, 'idle', i * 2 + 0.5, 2, { facing: -1, sz: 1.4, wind: 300 }));
+window.__ready = true;
+</script></body></html>

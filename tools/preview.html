@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Vorschau</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style></head>
+<body><canvas id="c"></canvas>
+<script type="module">
+// Rendert eine Zone ohne Spiellogik – zum Prüfen von Licht, Kacheln und Kulisse.
+// Parameter: ?zone=krypta&x=<Kachel>&scale=2
+import { Renderer } from '../src/render/renderer.js';
+import { TileRenderer } from '../src/render/tiles.js';
+import { Backgrounds } from '../src/render/backgrounds.js';
+import { drawDeco, drawDecoEmissive, drawHolyShaft, drawWater, flicker } from '../src/render/deco.js';
+import { generateZone } from '../src/game/levelgen.js';
+import { World } from '../src/game/world.js';
+import { ZONES } from '../src/data/zones.js';
+import { DEFAULT_SETTINGS, VIEW_W, VIEW_H, TILE } from '../src/data/config.js';
+import { drawHumanoid, makePose, COSTUMES, Cloth, solveRig, drawEyesGlow } from '../src/render/puppet.js';
+
+const q = new URLSearchParams(location.search);
+const zoneId = q.get('zone') || 'krypta';
+const zone = ZONES[zoneId];
+const settings = { ...DEFAULT_SETTINGS, quality: Number(q.get('q') ?? 2) };
+const r = new Renderer(document.getElementById('c'), settings);
+r.setScale(Renderer.scaleFor(settings.quality));
+r.grade = { ...zone.grade, ambient: zone.ambient };
+const level = generateZone(zoneId);
+const world = new World(level);
+const tiles = new TileRenderer(world, zone, r.scale);
+const bg = new Backgrounds(zone, r.scale);
+
+// Kamera: bei Kachel x oder am Startpunkt
+const fx = q.has('x') ? Number(q.get('x')) * TILE : level.spawn.x;
+let fy = level.spawn.y;
+if (q.has('x')) {
+  // Boden in dieser Spalte suchen
+  const tx = Math.floor(fx / TILE);
+  for (let ty = 2; ty < world.h - 1; ty++) {
+    if (world.tile(tx, ty) === 0 && world.tile(tx, ty + 1) !== 0) { fy = (ty + 1) * TILE; break; }
+  }
+}
+const camX = fx - VIEW_W / 2, camY = fy - VIEW_H * 0.6;
+r.setCamera(camX, camY);
+let t = Number(q.get('t') || 1.3);
+
+function frame() {
+  r.beginFrame(1 / 60);
+  const view = r.viewRect(40);
+  const lights = level.lights.map((L) => ({ ...L, intensity: (L.intensity ?? 1) * (L.flicker ? flicker(t, L.x) : 1) }));
+  for (const z of world.holy) {
+    const s = world.holyState(z);
+    if (s.glow > 0.1) lights.push({ x: z.x + z.w / 2, y: z.y + z.h - 10, radius: 90 + z.w * 2, color: 'rgb(255,230,160)', intensity: s.glow * (s.active ? 1.3 : 0.4) });
+  }
+  // Platzhalter-Spielerlicht (die rote Aura des Vampirs)
+  lights.push({ x: fx, y: fy - 20, radius: 150, color: 'rgb(225,190,200)', intensity: 0.75, shadows: true });
+  r.computeLights(lights, (a, b, c, d) => world.queryOccluders(a, b, c, d));
+
+  bg.draw(r, camX, camY, world.pxH, 1 / 60);
+  bg.drawFog(r, camX);
+  r.flushBackground();
+
+  r.world((ctx) => {
+    tiles.drawFront(ctx, view);
+    for (const d of level.deco) if (d.x > view.x - 80 && d.x < view.x + view.w + 80) drawDeco(ctx, d, t, zone);
+    // Ingomar und ein Ritter des Ordens als Probefiguren
+    const pose = makePose('idle', 1);
+    const rig = solveRig(pose);
+    const cape = new Cloth(8, 3.1, 560, 0.07), hair = new Cloth(5, 2.6, 400, 0.12);
+    const ax = fx + (rig.neck.x - 1.6), ay = fy + rig.neck.y + 1.2;
+    cape.reset(ax, ay); hair.reset(fx + rig.head.x - 2.2, fy + rig.head.y - 1);
+    for (let i = 0; i < 120; i++) { cape.update(1 / 60, ax, ay, fy, -80); hair.update(1 / 60, fx + rig.head.x - 2.2, fy + rig.head.y - 1, fy, -50); }
+    window.__rig = drawHumanoid(ctx, fx, fy, 1, pose, COSTUMES.ingomar, { cape, hair });
+    drawHumanoid(ctx, fx + 90, fy, -1, makePose('idle', 2), COSTUMES.knight, {});
+    for (const z of level.water) drawWater(ctx, z, t);
+  });
+  r.compositeWorld();
+  r.emissive((ctx, isGlow) => {
+    for (const d of level.deco) if (d.x > view.x - 80 && d.x < view.x + view.w + 80) drawDecoEmissive(ctx, d, t, isGlow);
+    for (const z of world.holy) drawHolyShaft(ctx, z, world.holyState(z), t, isGlow);
+    drawEyesGlow(ctx, fx, fy, 1, window.__rig, '#ff1f35', isGlow);
+  });
+  r.endFrame();
+}
+world.time = t;
+frame();
+window.__stats = { w: world.w, h: world.h, lights: level.lights.length, chunks: tiles.cache.size };
+window.__ready = true;
+</script></body></html>

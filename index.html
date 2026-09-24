@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0206">
+  <title>BLUTMOND – Der Fürst von Ingonesien</title>
+  <meta name="description" content="Ein gotisches 2.5D-Actionspiel im Stil von Castlevania. Du bist der Vampirfürst.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+    #loading {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      color: #c8a8b0; font: italic 28px Georgia, serif; letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="loading">Der Fürst erwacht …</div>
+  <noscript><p style="color:#fff;font:20px Georgia;padding:2em">BLUTMOND braucht JavaScript.</p></noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
