@@ -1,7 +1,9 @@
-// Eingabe: Gamepad (primär) + Tastatur (Ersatz).
+// Eingabe: Gamepad (primär) + Tastatur (Ersatz) + Fernbedienung (Samsung-TV).
 // Liefert kantengenaue Abfragen (pressed/released) und analoge Achsen.
 // Das Spiel merkt sich, welches Gerät zuletzt benutzt wurde, damit die
 // Tastenanzeigen im HUD automatisch umschalten.
+
+import { TV_KEYCODES } from './tv.js';
 
 export const ACTIONS = [
   'left', 'right', 'up', 'down',
@@ -12,15 +14,17 @@ export const ACTIONS = [
 ];
 
 // Standard-Tastaturbelegung (mehrere Tasten pro Aktion erlaubt).
+// Fernbedienung: Pfeile/OK wie Tastatur, Zurück = Menü/Abbrechen,
+// Farbtasten Rot/Grün/Gelb/Blau = Angriff/Sprung/Blutlanze/Ausweichen.
 const DEFAULT_KEYS = {
   left: ['ArrowLeft', 'KeyA'],
   right: ['ArrowRight', 'KeyD'],
   up: ['ArrowUp', 'KeyW'],
   down: ['ArrowDown', 'KeyS'],
-  jump: ['Space', 'KeyK'],
-  attack: ['KeyJ', 'KeyX'],
-  lance: ['KeyL', 'KeyC'],
-  dash: ['ShiftLeft', 'ShiftRight', 'KeyV'],
+  jump: ['Space', 'KeyK', 'TVGreen'],
+  attack: ['KeyJ', 'KeyX', 'TVRed'],
+  lance: ['KeyL', 'KeyC', 'TVYellow'],
+  dash: ['ShiftLeft', 'ShiftRight', 'KeyV', 'TVBlue'],
   drain: ['KeyE', 'KeyF'],
   batForm: [],
   wolfClaw: ['KeyQ', 'KeyR'],
@@ -28,10 +32,10 @@ const DEFAULT_KEYS = {
   spellNext: ['KeyT', 'Digit2'],
   spellPrev: ['KeyG'],
   inventory: ['KeyI'],
-  menu: ['Escape', 'KeyP'],
+  menu: ['Escape', 'KeyP', 'TVBack', 'TVPlayPause', 'TVPlay', 'TVPause'],
   map: ['Tab', 'KeyM'],
   confirm: ['Enter', 'Space', 'KeyJ'],
-  cancel: ['Escape', 'Backspace', 'KeyX'],
+  cancel: ['Escape', 'Backspace', 'KeyX', 'TVBack'],
 };
 
 // Standard-Gamepad-Belegung (Standard-Mapping, Xbox-Layout als Referenz).
@@ -61,6 +65,12 @@ const DEFAULT_PADS = {
 
 const DEADZONE = 0.28;
 
+/** Tastencode; die TV-Fernbedienung liefert statt e.code nur keyCode. */
+function keyOf(e) {
+  if (e.keyCode >= 400 || e.keyCode === 19 || e.keyCode === 10009) return TV_KEYCODES[e.keyCode] || 'TV' + e.keyCode;
+  return e.code || TV_KEYCODES[e.keyCode] || '';
+}
+
 export class Input {
   constructor() {
     this.keys = { ...DEFAULT_KEYS };
@@ -85,14 +95,15 @@ export class Input {
       if (!this._enabled) return;
       // Browser-Standardverhalten unterdrücken, das im Vollbild stört
       // (Leertaste scrollt, Tab springt zum nächsten Element, Pfeile scrollen).
-      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+      const code = keyOf(e);
+      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(code) || code.startsWith('TV')) {
         e.preventDefault();
       }
       if (e.repeat) return;
-      this._down.add(e.code);
+      this._down.add(code);
       this.lastDevice = 'keyboard';
     };
-    this._onKeyUp = (e) => { this._down.delete(e.code); };
+    this._onKeyUp = (e) => { this._down.delete(keyOf(e)); };
     this._onBlur = () => { this._down.clear(); };
 
     this._onPadConnect = (e) => {
